@@ -186,7 +186,7 @@ export default function App() {
         {/* ================= FALLBACK ================= */}
         <Route path="/" element={<Home />} />
         {/* Bidding */}
-        <Route path="/bid/:biddingId" element={<BiddingForm />} />
+        <Route path="/:adminId/bid/:documentId" element={<BiddingForm />} />
         <Route
           path="/:adminId/bidding-dashboard"
           element={<BiddingDashboard />}

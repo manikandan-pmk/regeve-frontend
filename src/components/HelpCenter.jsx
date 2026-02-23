@@ -1,15 +1,21 @@
- import React from "react";
-import { Phone, Mail, MessageCircle, Clock, FileText, Users, Settings, CreditCard, Shield, HelpCircle } from "lucide-react";
+import React, { useState } from "react";
+import { 
+  Phone, Mail, MessageCircle, FileText, Users, 
+  Settings, CreditCard, Shield, ChevronDown, Search 
+} from "lucide-react";
 
 const HelpCenter = () => {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [activeIndex, setActiveIndex] = useState(null);
+
   const faqs = [
     {
-      question: "How do I set up QR code registration for my event?",
+      question: "How do I set up QR code registration?",
       answer: "Navigate to the Event Registration section in your dashboard, click 'Create New Event', and follow the setup wizard. You can customize QR codes, set up attendee fields, and configure check-in settings.",
       icon: <FileText className="w-5 h-5" />
     },
     {
-      question: "Can I run multiple lucky draws during one event?",
+      question: "Can I run multiple lucky draws?",
       answer: "Yes, our system supports multiple lucky draw sessions. You can schedule different draws for various prize categories or time slots throughout your event.",
       icon: <Users className="w-5 h-5" />
     },
@@ -20,18 +26,13 @@ const HelpCenter = () => {
     },
     {
       question: "How secure is attendee data?",
-      answer: "We use bank-level encryption and comply with global data protection regulations. All data is stored securely and never shared with third parties without explicit consent.",
+      answer: "We use bank-level encryption and comply with global GDPR regulations. All data is stored securely and never shared with third parties.",
       icon: <Shield className="w-5 h-5" />
     },
     {
-      question: "What happens if the scanner goes offline?",
+      question: "Offline scanner capabilities?",
       answer: "Our app has offline mode capability. Scans are stored locally and automatically sync when connectivity is restored.",
       icon: <Settings className="w-5 h-5" />
-    },
-    {
-      question: "Can I export attendee data?",
-      answer: "Yes, you can export attendee lists, check-in reports, and participation data in CSV or Excel format from your dashboard.",
-      icon: <FileText className="w-5 h-5" />
     }
   ];
 
@@ -39,72 +40,115 @@ const HelpCenter = () => {
     {
       icon: <MessageCircle className="w-6 h-6" />,
       title: "Live Chat",
-      description: "Get instant help from our support team",
+      description: "Average wait: 2 mins",
       availability: "Available 24/7",
-      action: "Start Chat"
+      color: "bg-emerald-50 text-emerald-600"
     },
     {
       icon: <Mail className="w-6 h-6" />,
       title: "Email Support",
-      description: "Send us a detailed message",
-      availability: "Response within 2 hours",
-      action: "Send Email"
+      description: "Detailed inquiries",
+      availability: "Response < 2 hours",
+      color: "bg-blue-50 text-blue-600"
     },
     {
       icon: <Phone className="w-6 h-6" />,
-      title: "Phone Support",
-      description: "Speak directly with our experts",
-      availability: "Mon-Fri, 9AM-6PM EST",
-      action: "Call Now"
+      title: "Phone",
+      description: "Direct expert help",
+      availability: "Mon-Fri, 9-6 EST",
+      color: "bg-purple-50 text-purple-600"
     }
   ];
 
   return (
-    <div className="min-h-screen pt-24 bg-gradient-to-br from-slate-50 to-slate-100 py-8">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen mt-5 bg-[#F8FAFC] pt-20 pb-12">
+      <div className="max-w-5xl mx-auto px-4">
         
-        {/* Header */}
+        {/* Hero Section */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-slate-800 mb-4">
-            Help Center
+          <h1 className="text-5xl font-extrabold text-slate-900 tracking-tight mb-4">
+            How can we <span className="text-blue-600">help?</span>
           </h1>
-          <p className="text-xl text-slate-600">
-            Get help with event registration, lucky draws, and more
-          </p>
+          <div className="max-w-2xl mx-auto relative group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+            <input 
+              type="text"
+              placeholder="Search for articles, guides, and more..."
+              className="w-full pl-12 pr-4 py-4 bg-white rounded-2xl border-none shadow-xl shadow-slate-200/50 focus:ring-2 focus:ring-blue-500 transition-all outline-none text-slate-600"
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
         </div>
 
-        {/* FAQ Section */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 mb-8">
-          <h2 className="text-2xl font-bold text-slate-800 mb-6 text-center">
-            Frequently Asked Questions
-          </h2>
-          
-          <div className="space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* FAQ Accordion Section */}
+          <div className="lg:col-span-2 space-y-4">
+            <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+              <span className="w-2 h-8 bg-blue-600 rounded-full" />
+              Popular Questions
+            </h2>
+            
             {faqs.map((faq, index) => (
-              <div key={index} className="border border-slate-200 rounded-xl p-6 hover:border-slate-300 transition-colors">
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600 flex-shrink-0">
-                    {faq.icon}
+              <div 
+                key={index}
+                className="group bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden"
+              >
+                <button 
+                  onClick={() => setActiveIndex(activeIndex === index ? null : index)}
+                  className="w-full px-6 py-5 flex items-center justify-between text-left"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="p-2 bg-slate-50 rounded-lg group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
+                      {faq.icon}
+                    </div>
+                    <span className="font-semibold text-slate-700">{faq.question}</span>
                   </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-slate-800 mb-3 text-lg">
-                      {faq.question}
-                    </h3>
-                    <p className="text-slate-600 leading-relaxed">
-                      {faq.answer}
-                    </p>
-                  </div>
+                  <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform duration-300 ${activeIndex === index ? 'rotate-180' : ''}`} />
+                </button>
+                
+                <div className={`px-6 overflow-hidden transition-all duration-300 ease-in-out ${activeIndex === index ? 'max-h-40 pb-6' : 'max-h-0'}`}>
+                  <p className="text-slate-600 leading-relaxed pl-12">
+                    {faq.answer}
+                  </p>
                 </div>
               </div>
             ))}
           </div>
+
+          {/* Contact Sidebar */}
+          <div className="space-y-6">
+            <h2 className="text-xl font-bold text-slate-800 mb-6">Get in Touch</h2>
+            {contactMethods.map((method, index) => (
+              <div 
+                key={index}
+                className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:-translate-y-1 transition-all cursor-pointer group"
+              >
+                <div className="flex items-center gap-4 mb-3">
+                  <div className={`p-3 rounded-xl transition-transform group-hover:scale-110 ${method.color}`}>
+                    {method.icon}
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-slate-800">{method.title}</h3>
+                    <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">{method.availability}</p>
+                  </div>
+                </div>
+                <p className="text-slate-500 text-sm mb-4">{method.description}</p>
+                <button className="w-full py-2.5 rounded-xl border border-slate-200 text-slate-700 font-semibold hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all">
+                  Connect
+                </button>
+              </div>
+            ))}
+            
+            {/* Secondary CTA */}
+            <div className="bg-blue-600 rounded-2xl p-6 text-white text-center">
+              <h3 className="font-bold mb-2">Need a custom solution?</h3>
+              <p className="text-blue-100 text-sm mb-4">Our enterprise team is ready to build tailored event workflows for you.</p>
+              <button className="bg-white text-blue-600 px-6 py-2 rounded-lg font-bold text-sm shadow-lg">
+                Contact Sales
+              </button>
+            </div>
+          </div>
         </div>
-
-        {/* Contact Support */}
-         
-
-        
-
       </div>
     </div>
   );

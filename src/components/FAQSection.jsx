@@ -1,306 +1,235 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Minus, HelpCircle, Users, Utensils, Gift, Trophy } from 'lucide-react';
+import { 
+  Plus, Minus, HelpCircle, Sparkles, 
+  ArrowRight, Zap, ShieldCheck, Gift, Utensils 
+} from 'lucide-react';
 
 const FAQSection = () => {
-  const [activeId, setActiveId] = useState(null);
-  const [activeCategory, setActiveCategory] = useState('all');
+  const [activeQuestion, setActiveQuestion] = useState(1); 
 
-  const faqs = [
+  const faqData = [
     {
       id: 1,
       question: "How does event registration work?",
-      answer: "Our registration process is simple and efficient. Participants can register through our online portal by filling out a custom form. Once submitted, they receive instant confirmation with a digital pass. Event organizers can track registrations in real-time, manage attendee lists, and send automated reminders.",
-      icon: Users,
-      category: "Registration"
+      answer: "Our registration process is streamlined for speed. Participants access a branded portal, fill out a custom form, and receive an instant QR-coded digital pass via email and SMS.",
+      category: "Registration",
+      icon: Zap
     },
     {
       id: 2,
-      question: "How to manage veg/non-veg food counters?",
-      answer: "The food management system allows you to track dietary preferences during registration. You can set up separate counters for vegetarian and non-vegetarian meals, monitor consumption in real-time, and adjust quantities based on attendance. The system provides analytics to help optimize food planning for future events.",
-      icon: Utensils,
-      category: "Food Management"
+      question: "Can participants register on-site?",
+      answer: "Yes. Our 'Kiosk Mode' allows for rapid on-the-spot registrations. Walk-ins can scan a QR code, register in seconds, and get their badge printed instantly.",
+      category: "Registration",
+      icon: ShieldCheck
     },
     {
       id: 3,
-      question: "How to add lucky draw gifts and prizes?",
-      answer: "Adding gifts to the lucky draw is straightforward. Access the prizes section in your dashboard, click 'Add New Prize', upload prize details and images, set quantities and values. You can categorize prizes by type and value, and the system will automatically track distribution and remaining inventory.",
-      icon: Gift,
-      category: "Lucky Draw"
+      question: "How do I manage food counters?",
+      answer: "We track dietary preferences at registration. The dashboard allocates distinct counters for Veg/Non-Veg and monitors consumption live to prevent wastage.",
+      category: "Food",
+      icon: Utensils
     },
     {
       id: 4,
-      question: "How are winners selected in the lucky draw?",
-      answer: "Winners are selected using our transparent and fair random selection algorithm. The system ensures each eligible participant has an equal chance. Winners are announced in real-time on the winners board, and both organizers and participants receive instant notifications. The entire process is auditable for transparency.",
-      icon: Trophy,
-      category: "Lucky Draw"
+      question: "Is the lucky draw fair?",
+      answer: "Absolutely. We use a cryptographically secure random number generator. The selection logic is transparent and logs every draw for audit purposes.",
+      category: "Lucky Draw",
+      icon: Gift
     },
     {
       id: 5,
-      question: "Can participants register on the event day?",
-      answer: "Yes, we support on-the-spot registration through our mobile app. However, we recommend pre-registration to ensure smooth check-in and accurate food/seat planning. Walk-in registrations are processed instantly with the same digital pass system.",
-      icon: Users,
-      category: "Registration"
-    },
-    {
-      id: 6,
-      question: "How do I track food consumption during the event?",
-      answer: "Our real-time dashboard shows live consumption data for both veg and non-veg counters. You can monitor usage patterns, identify peak times, and make adjustments as needed. The system also alerts you when supplies are running low.",
-      icon: Utensils,
-      category: "Food Management"
-    },
-    {
-      id: 7,
-      question: "What types of prizes can I add to the lucky draw?",
-      answer: "You can add various prize types including physical goods, digital vouchers, discount coupons, experience packages, and cash prizes. Each prize type has specific configuration options to ensure proper tracking and distribution.",
-      icon: Gift,
-      category: "Lucky Draw"
-    },
-    {
-      id: 8,
-      question: "Is the winner selection process truly random?",
-      answer: "Absolutely. Our algorithm uses cryptographically secure random number generation to ensure complete fairness. The selection process is transparent and can be verified. We also provide options for live spin wheel animations to enhance participant engagement.",
-      icon: Trophy,
-      category: "Lucky Draw"
+      question: "What payment gateways are supported?",
+      answer: "We integrate natively with Stripe, Razorpay, and PayPal, allowing you to accept payments in 135+ currencies securely.",
+      category: "Payments",
+      icon: ShieldCheck
     }
   ];
 
-  const categories = [
-    { id: 'all', name: 'All Questions', icon: HelpCircle },
-    { id: 'Registration', name: 'Registration', icon: Users },
-    { id: 'Food Management', name: 'Food Management', icon: Utensils },
-    { id: 'Lucky Draw', name: 'Lucky Draw', icon: Gift }
-  ];
-
-  const filteredFaqs = activeCategory === 'all' 
-    ? faqs 
-    : faqs.filter(faq => faq.category === activeCategory);
-
-  const toggleAccordion = (id) => {
-    setActiveId(activeId === id ? null : id);
-  };
-
-  // Reset active accordion when category changes
-  useEffect(() => {
-    setActiveId(null);
-  }, [activeCategory]);
-
-  // Animation variants
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
-  };
-
-  const itemVariants = {
-    hidden: { 
-      y: 20, 
-      opacity: 0,
-      scale: 0.95
-    },
-    visible: {
-      y: 0,
-      opacity: 1,
-      scale: 1,
-      transition: {
-        duration: 0.5,
-        ease: "easeOut"
-      }
-    }
-  };
-
-  const accordionVariants = {
-    closed: {
-      height: 0,
-      opacity: 0,
-      transition: {
-        duration: 0.3,
-        ease: "easeInOut"
-      }
-    },
-    open: {
-      height: "auto",
-      opacity: 1,
-      transition: {
-        duration: 0.4,
-        ease: "easeInOut"
-      }
-    }
-  };
-
-  const iconVariants = {
-    closed: { 
-      rotate: 0,
-      scale: 1
-    },
-    open: { 
-      rotate: 180,
-      scale: 1.1
-    }
-  };
-
-  const buttonVariants = {
-    hover: {
-      scale: 1.02,
-      backgroundColor: "rgba(59, 130, 246, 0.05)",
-      transition: {
-        duration: 0.2
-      }
-    },
-    tap: {
-      scale: 0.98
-    }
+  const handleToggle = (id) => {
+    setActiveQuestion(activeQuestion === id ? null : id);
   };
 
   return (
-    <section id="faq" className="py-20 bg-white">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header Section */}
-        <motion.div
-          className="text-center mb-16"
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          viewport={{ once: true, margin: "-100px" }}
-        >
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.2 }}
-            className="inline-flex items-center px-4 py-2 bg-blue-50 rounded-full border border-blue-200 mb-6"
-          >
-            <HelpCircle className="w-4 h-4 text-blue-600 mr-2" />
-            <span className="text-blue-700 font-semibold text-sm">FAQ</span>
-          </motion.div>
-
-          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-            Frequently Asked Questions
-          </h2>
-          <div className="w-24 h-1 bg-gradient-to-r from-blue-600 to-cyan-600 mx-auto mb-6"></div>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Get answers to all your questions about our event management platform and features.
-          </p>
-        </motion.div>
-
-        {/* Category Filters */}
-        <motion.div
-          className="flex flex-wrap justify-center gap-3 mb-12"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.1 }}
-          viewport={{ once: true, margin: "-50px" }}
-        >
-          {categories.map((category) => {
-            const IconComponent = category.icon;
-            return (
-              <motion.button
-                key={category.id}
-                onClick={() => setActiveCategory(category.id)}
-                className={`flex items-center gap-2 px-5 py-3 rounded-xl font-semibold text-sm transition-all duration-300 border ${
-                  activeCategory === category.id
-                    ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white text-white shadow-lg border-transparent'
-                    : 'bg-white text-gray-700 hover:text-gray-900 border-gray-300 hover:border-gray-400 hover:shadow-md'
-                }`}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <IconComponent className="w-4 h-4" />
-                {category.name}
-              </motion.button>
-            );
-          })}
-        </motion.div>
-
-        {/* FAQ Accordion */}
-        <motion.div
-          className="max-w-4xl mx-auto"
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
-        >
-          <div className="space-y-4">
-            <AnimatePresence mode="wait">
-              {filteredFaqs.map((faq) => (
-                <motion.div
-                  key={faq.id}
-                  layout
-                  variants={itemVariants}
-                  initial="hidden"
-                  animate="visible"
-                  exit="hidden"
-                  className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-shadow duration-300"
+    <section className="bg-white font-sans text-slate-900 py-16 md:py-24 px-4 sm:px-6 lg:px-12 selection:bg-blue-100 selection:text-blue-900 overflow-hidden">
+      <div className="max-w-7xl mx-auto">
+        
+        {/* --- Header (Centered on Mobile, Left/Bottom Aligned on Desktop) --- */}
+        <div className="flex flex-col md:flex-row justify-between items-center md:items-end mb-12 md:mb-20 gap-6 md:gap-8 text-center md:text-left">
+            <div className="max-w-2xl">
+                <motion.div 
+                    initial={{ opacity: 0, x: -20 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-blue-600 text-[10px] md:text-xs font-bold uppercase tracking-wider mb-4 md:mb-6 mx-auto md:mx-0"
                 >
-                  <motion.button
-                    className="w-full px-6 py-6 text-left flex items-center justify-between gap-4"
-                    onClick={() => toggleAccordion(faq.id)}
-                    variants={buttonVariants}
-                    whileHover="hover"
-                    whileTap="tap"
-                  >
-                    <div className="flex items-start gap-4 flex-1">
-                      <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
-                        <faq.icon className="w-6 h-6 text-white" />
-                      </div>
-                      <div className="flex-1 text-left">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2 leading-tight">
-                          {faq.question}
-                        </h3>
-                        <span className={`inline-block px-3 py-1 text-xs rounded-full font-medium ${
-                          faq.category === 'Registration' 
-                            ? 'bg-blue-100 text-blue-700' 
-                            : faq.category === 'Food Management'
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-purple-100 text-purple-700'
-                        }`}>
-                          {faq.category}
-                        </span>
-                      </div>
-                    </div>
-                    <motion.div
-                      variants={iconVariants}
-                      animate={activeId === faq.id ? "open" : "closed"}
-                      transition={{ duration: 0.3, type: "spring" }}
-                      className="flex-shrink-0 w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center"
-                    >
-                      {activeId === faq.id ? (
-                        <Minus className="w-4 h-4 text-gray-600" />
-                      ) : (
-                        <Plus className="w-4 h-4 text-gray-600" />
-                      )}
-                    </motion.div>
-                  </motion.button>
-
-                  <AnimatePresence>
-                    {activeId === faq.id && (
-                      <motion.div
-                        variants={accordionVariants}
-                        initial="closed"
-                        animate="open"
-                        exit="closed"
-                        className="overflow-hidden"
-                      >
-                        <div className="px-6 pb-6">
-                          <div className="pl-16 border-l-2 border-blue-200 ml-2">
-                            <p className="text-gray-600 leading-relaxed text-lg">
-                              {faq.answer}
-                            </p>
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                    <Sparkles className="w-3 h-3 md:w-3.5 md:h-3.5" /> Knowledge Base
                 </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
-        </motion.div>
+                <motion.h2 
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.1 }}
+                    className="text-4xl sm:text-5xl md:text-7xl font-black text-slate-900 tracking-tight leading-[0.9]"
+                >
+                    Common <br/> Queries.
+                </motion.h2>
+            </div>
+            
+            <div className="hidden md:block pb-2">
+                <a href="#" className="flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-blue-600 transition-colors group cursor-pointer">
+                    View full documentation 
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </a>
+            </div>
+        </div>
 
-       
+        {/* --- Master-Detail Layout --- */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-24 relative">
+            
+            {/* LEFT: Questions List */}
+            <div className="lg:col-span-5 flex flex-col gap-3 md:gap-4">
+                {faqData.map((item) => {
+                    const isActive = activeQuestion === item.id;
+                    return (
+                        <motion.div
+                            key={item.id}
+                            initial={{ opacity: 0, y: 10 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            onClick={() => handleToggle(item.id)}
+                            className={`
+                                group relative p-5 md:p-6 rounded-2xl cursor-pointer transition-all duration-300 border
+                                ${isActive 
+                                    ? 'bg-slate-900 border-slate-900 shadow-xl lg:scale-[1.02] z-10' 
+                                    : 'bg-white border-slate-100 hover:border-blue-200 hover:bg-blue-50/30'}
+                            `}
+                        >
+                            <div className="flex items-start md:items-center justify-between gap-4">
+                                <h3 className={`text-base md:text-lg font-bold leading-tight transition-colors text-left ${isActive ? 'text-white' : 'text-slate-900'}`}>
+                                    {item.question}
+                                </h3>
+                                <div className={`
+                                    flex-shrink-0 w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center transition-colors mt-0.5 md:mt-0
+                                    ${isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-400 group-hover:bg-blue-100 group-hover:text-blue-600'}
+                                `}>
+                                    {isActive ? <Minus className="w-3.5 h-3.5 md:w-4 md:h-4" /> : <Plus className="w-3.5 h-3.5 md:w-4 md:h-4" />}
+                                </div>
+                            </div>
+
+                            {/* MOBILE ONLY: Accordion Content */}
+                            <AnimatePresence>
+                                {isActive && (
+                                    <motion.div
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: "auto", opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        transition={{ duration: 0.3 }}
+                                        className="lg:hidden overflow-hidden"
+                                    >
+                                        <div className="pt-4 mt-4 border-t border-white/10">
+                                            <p className="text-slate-400 text-sm leading-relaxed text-left">
+                                                {item.answer}
+                                            </p>
+                                            <div className="mt-4 flex items-center gap-2">
+                                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Category:</span>
+                                                <span className="text-[10px] font-bold text-white bg-white/10 px-2 py-1 rounded">{item.category}</span>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </motion.div>
+                    );
+                })}
+            </div>
+
+            {/* RIGHT: Detail Card (Hidden on Mobile, Visible on Desktop) */}
+            <div className="hidden lg:col-span-7 lg:block relative">
+                <div className="sticky top-32">
+                    <AnimatePresence mode='wait'>
+                        {faqData.map((item) => (
+                            activeQuestion === item.id && (
+                                <motion.div
+                                    key={item.id}
+                                    initial={{ opacity: 0, x: 20, scale: 0.95 }}
+                                    animate={{ opacity: 1, x: 0, scale: 1 }}
+                                    exit={{ opacity: 0, x: -20, scale: 0.95 }}
+                                    transition={{ duration: 0.4, ease: "circOut" }}
+                                    className="bg-slate-50 border border-slate-100 rounded-[2.5rem] p-12 h-[500px] flex flex-col justify-between shadow-2xl shadow-slate-200/50 overflow-hidden relative"
+                                >
+                                    {/* Abstract Background Decoration */}
+                                    <div className="absolute top-0 right-0 w-64 h-64 bg-blue-100 rounded-full blur-[80px] opacity-60 pointer-events-none -translate-y-1/2 translate-x-1/2"></div>
+                                    <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-100 rounded-full blur-[80px] opacity-60 pointer-events-none translate-y-1/2 -translate-x-1/2"></div>
+
+                                    {/* Content */}
+                                    <div className="relative z-10">
+                                        <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-8">
+                                            <item.icon className="w-8 h-8 text-blue-600" />
+                                        </div>
+                                        
+                                        <span className="text-blue-600 font-bold uppercase tracking-widest text-xs mb-4 block">
+                                            {item.category}
+                                        </span>
+                                        
+                                        <h3 className="text-3xl font-bold text-slate-900 mb-6 leading-tight">
+                                            {item.question}
+                                        </h3>
+                                        
+                                        <p className="text-xl text-slate-500 leading-relaxed font-medium">
+                                            {item.answer}
+                                        </p>
+                                    </div>
+
+                                    {/* --- Footer with Images --- */}
+                                    <div className="relative z-10 pt-8 border-t border-slate-200 mt-auto flex items-center justify-between">
+                                        <div className="flex -space-x-3">
+                                            <img 
+                                                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=64&h=64" 
+                                                alt="Support Team" 
+                                                className="w-10 h-10 rounded-full border-2 border-white object-cover"
+                                            />
+                                            <img 
+                                                src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=64&h=64" 
+                                                alt="Support Team" 
+                                                className="w-10 h-10 rounded-full border-2 border-white object-cover"
+                                            />
+                                            <img 
+                                                src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=64&h=64" 
+                                                alt="Support Team" 
+                                                className="w-10 h-10 rounded-full border-2 border-white object-cover"
+                                            />
+                                        </div>
+                                        <button className="text-sm font-bold text-slate-400 hover:text-blue-600 transition-colors cursor-pointer">
+                                            Was this helpful?
+                                        </button>
+                                    </div>
+                                </motion.div>
+                            )
+                        ))}
+                    </AnimatePresence>
+                    
+                    {/* Placeholder when nothing active */}
+                    {!activeQuestion && (
+                        <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-[2.5rem] p-12 h-[500px] flex flex-col items-center justify-center text-center">
+                            <HelpCircle className="w-16 h-16 text-slate-300 mb-4" />
+                            <h3 className="text-xl font-bold text-slate-400">Select a question</h3>
+                            <p className="text-slate-400">Click on any question on the left to view details.</p>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+        </div>
+
+        {/* --- Mobile Footer Link --- */}
+        <div className="mt-12 md:hidden text-center">
+             <a href="#" className="inline-flex items-center gap-2 text-sm font-bold text-blue-600 hover:text-blue-700 cursor-pointer">
+                View full documentation 
+                <ArrowRight className="w-4 h-4" />
+            </a>
+        </div>
+
       </div>
     </section>
   );

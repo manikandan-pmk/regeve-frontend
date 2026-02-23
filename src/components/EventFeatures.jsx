@@ -9,8 +9,9 @@ import {
   Package,
   Vote,
   Sparkles,
-  ChevronRight,
-  CheckCircle,
+  ArrowRight,
+  CheckCircle2,
+  LayoutTemplate
 } from "lucide-react";
 
 const EventFeatures = () => {
@@ -20,257 +21,234 @@ const EventFeatures = () => {
     {
       id: 0,
       title: "Registration",
-      description: "Streamlined registration with instant confirmation",
+      description: "Seamless entry management.",
       icon: Users,
-      color: "from-blue-500 to-cyan-500",
-      details: ["Custom forms", "Email automation", "QR check-in"],
+      color: "text-blue-600",
+      bg: "bg-blue-50",
+      gradient: "from-blue-600 to-cyan-500",
+      details: ["Custom Forms", "QR Check-in", "Auto-Emails"],
     },
     {
       id: 1,
-      title: "Food Management",
-      description: "Track preferences & manage meal allocations",
+      title: "Food Counters",
+      description: "Smart dietary tracking.",
       icon: Utensils,
-      color: "from-emerald-500 to-green-500",
-      details: ["Veg/Non-Veg tracking", "Meal planning", "Waste reduction"],
+      color: "text-emerald-600",
+      bg: "bg-emerald-50",
+      gradient: "from-emerald-500 to-teal-500",
+      details: ["Veg/Non-Veg", "Consumption Stats", "Waste Control"],
     },
     {
       id: 2,
       title: "Lucky Draw",
-      description: "Interactive spin wheel for prize distribution",
+      description: "Live interactive spins.",
       icon: Gift,
-      color: "from-purple-500 to-pink-500",
-      details: ["Real-time draws", "Multiple prize tiers", "Winner tracking"],
+      color: "text-violet-600",
+      bg: "bg-violet-50",
+      gradient: "from-violet-600 to-fuchsia-500",
+      details: ["Live Wheel", "Fair Algorithms", "Instant Winners"],
     },
     {
       id: 3,
       title: "Winners Board",
-      description: "Live updates with celebratory animations",
+      description: "Real-time celebration.",
       icon: Trophy,
-      color: "from-amber-500 to-orange-500",
-      details: ["Real-time updates", "Shareable results", "Photo capture"],
+      color: "text-amber-600",
+      bg: "bg-amber-50",
+      gradient: "from-amber-500 to-orange-500",
+      details: ["Live Updates", "Confetti Effects", "TV Mode"],
     },
     {
       id: 4,
       title: "Analytics",
-      description: "Dashboard with real-time insights",
+      description: "Data-driven insights.",
       icon: BarChart3,
-      color: "from-indigo-500 to-blue-500",
-      details: ["Attendance metrics", "Engagement scores", "Export reports"],
+      color: "text-indigo-600",
+      bg: "bg-indigo-50",
+      gradient: "from-indigo-600 to-blue-500",
+      details: ["Attendance Graph", "Peak Times", "Export Data"],
     },
     {
       id: 5,
-      title: "Gift System",
-      description: "Systematic prize distribution & tracking",
+      title: "Gifting",
+      description: "Inventory tracking.",
       icon: Package,
-      color: "from-rose-500 to-pink-500",
-      details: ["Inventory management", "Digital receipts", "Claim tracking"],
+      color: "text-rose-600",
+      bg: "bg-rose-50",
+      gradient: "from-rose-500 to-pink-500",
+      details: ["Stock Levels", "Digital Receipts", "Claim Status"],
     },
     {
       id: 6,
-      title: "Digital Voting",
-      description: "Secure digital voting with live results",
+      title: "Voting",
+      description: "Secure elections.",
       icon: Vote,
-      color: "from-violet-500 to-purple-500",
-      details: ["Secure authentication", "Live results", "Audit trails"],
+      color: "text-cyan-600",
+      bg: "bg-cyan-50",
+      gradient: "from-cyan-600 to-blue-500",
+      details: ["Secure Auth", "Live Results", "Audit Trail"],
     },
   ];
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { staggerChildren: 0.1 },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, scale: 0.9 },
-    visible: {
-      opacity: 1,
-      scale: 1,
-      transition: { duration: 0.3, ease: "easeOut" },
-    },
-  };
-
-  const ActiveIcon = features[activeFeature].icon; // <-- FIXED
-
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-8 sm:py-12 px-4 sm:px-6 lg:px-8">
-
-      {/* Header */}
-      <motion.div
-        className="text-center mb-8 sm:mb-12"
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-full border border-blue-100 mb-4">
-          <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-          <span className="text-blue-700 font-medium text-xs sm:text-sm">
-            Event Management Platform
-          </span>
-        </div>
-
-        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-3">
-          Event{" "}
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-600">
-            Features
-          </span>
+    <div className="bg-white font-sans text-slate-900 overflow-hidden relative selection:bg-slate-900 selection:text-white">
+      
+      {/* --- Decorative Background Text --- */}
+      <div className="absolute top-0 left-0 w-full overflow-hidden pointer-events-none opacity-[0.03] z-0">
+        <h1 className="text-[18vw] font-black leading-none text-slate-900 whitespace-nowrap -ml-10 select-none">
+          FEATURES
         </h1>
-        <p className="text-sm sm:text-base text-gray-600 max-w-2xl mx-auto">
-          Streamline operations and enhance experiences with our comprehensive toolkit.
-        </p>
-      </motion.div>
+      </div>
 
-      <div className="max-w-6xl mx-auto">
-
-        {/* Feature Cards */}
-        <motion.div
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-12"
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-50px" }}
-        >
-          {features.map((feature) => {
-            const Icon = feature.icon;
-
-            return (
-              <motion.button
-                key={feature.id}
-                variants={itemVariants}
-                onClick={() => setActiveFeature(feature.id)}
-                className={`relative group p-4 sm:p-5 rounded-xl border transition-all duration-300 ${
-                  activeFeature === feature.id
-                    ? "bg-white border-transparent shadow-lg scale-105"
-                    : "bg-white/50 border-gray-200 hover:bg-white hover:shadow-md"
-                }`}
-              >
-                {activeFeature === feature.id && (
-                  <motion.div
-                    className="absolute -top-1.5 -right-1.5 w-3 h-3 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500"
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                  />
-                )}
-
-                <div
-                  className={`w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-gradient-to-r ${feature.color} flex items-center justify-center mb-3`}
-                >
-                  <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-                </div>
-
-                <div className="text-left">
-                  <h3 className="font-bold text-gray-900 text-sm sm:text-base mb-1">
-                    {feature.title}
-                  </h3>
-                  <p className="text-xs sm:text-sm text-gray-600">
-                    {feature.description}
-                  </p>
-                </div>
-
-                <ChevronRight
-                  className={`w-4 h-4 text-gray-400 absolute bottom-3 right-3 transition-all duration-300 ${
-                    activeFeature === feature.id
-                      ? "opacity-100 translate-x-0"
-                      : "opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0"
-                  }`}
-                />
-              </motion.button>
-            );
-          })}
-        </motion.div>
-
-        {/* DETAILS PANEL */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeFeature}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.3 }}
-            className="bg-white rounded-2xl p-6 sm:p-8 border border-gray-200 shadow-sm"
+      <div className="container mx-auto px-6 lg:px-12 pt-32 pb-24 relative z-10">
+        
+        <div className="flex flex-col lg:flex-row gap-8 items-start h-full">
+          
+          {/* --- LEFT PANEL: Sticky Navigation (Dark Theme) --- */}
+          <motion.div 
+            initial={{ opacity: 0, x: -50 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            className="lg:w-5/12 lg:sticky lg:top-32 bg-slate-950 text-white p-8 md:p-12 rounded-[2.5rem] shadow-2xl overflow-hidden min-h-[600px] flex flex-col"
           >
-            <div className="flex flex-col sm:flex-row sm:items-start gap-6">
+            {/* Background Blob */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600 rounded-full blur-[80px] opacity-20 transform translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
 
-              {/* FIXED ICON */}
-              <div
-                className={`w-16 h-16 rounded-2xl bg-gradient-to-r ${
-                  features[activeFeature].color
-                } flex items-center justify-center shadow-lg`}
-              >
-                <ActiveIcon className="w-8 h-8 text-white" />
+            <div className="mb-10 relative z-10">
+              <div className="inline-flex items-center gap-2 text-blue-400 font-bold tracking-widest uppercase text-xs mb-6 border border-blue-400/20 px-3 py-1 rounded-full bg-blue-400/10">
+                <LayoutTemplate className="w-3 h-3" /> Core Modules
               </div>
-
-              <div className="flex-1">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
-                    {features[activeFeature].title}
-                  </h2>
-
-                  <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100">
-                    Feature {activeFeature + 1}/{features.length}
-                  </span>
-                </div>
-
-                <p className="text-gray-600 mb-6 text-sm sm:text-base">
-                  {features[activeFeature].description}
-                </p>
-
-                {/* Details List */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {features[activeFeature].details.map((detail, index) => (
-                    <motion.div
-                      key={index}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                      className="flex items-center gap-2 p-3 rounded-lg bg-gray-50 hover:bg-gray-100"
-                    >
-                      <CheckCircle className="w-4 h-4 text-green-500" />
-                      <span className="text-sm text-gray-700">{detail}</span>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
+              <h2 className="text-4xl font-bold leading-tight mb-4 tracking-tight">
+                Everything you need <br/> to run the <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">perfect event.</span>
+              </h2>
             </div>
 
-            {/* Progress Bar */}
-            <div className="mt-8 pt-6 border-t border-gray-100">
-              <div className="flex items-center justify-between text-sm text-gray-500 mb-2">
-                <span>Features</span>
-                <span>
-                  {activeFeature + 1}/{features.length}
-                </span>
-              </div>
-
-              <div className="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
-                <motion.div
-                  className={`h-full bg-gradient-to-r ${features[activeFeature].color}`}
-                  initial={{ width: 0 }}
-                  animate={{
-                    width: `${((activeFeature + 1) / features.length) * 100}%`,
-                  }}
-                  transition={{ duration: 0.5 }}
-                />
-              </div>
+            {/* Scrollable List for Mobile / Static for Desktop */}
+            <div className="flex-grow space-y-3 overflow-y-auto pr-2 custom-scrollbar relative z-10">
+              {features.map((feature, index) => {
+                const isActive = activeFeature === index;
+                return (
+                  <button
+                    key={feature.id}
+                    onClick={() => setActiveFeature(index)}
+                    className={`
+                      w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-300 text-left border cursor-pointer
+                      ${isActive 
+                        ? 'bg-white/10 border-white/20 shadow-lg backdrop-blur-sm' 
+                        : 'bg-transparent border-transparent hover:bg-white/5 text-slate-400 hover:text-white'}
+                    `}
+                  >
+                    <feature.icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-slate-500'}`} />
+                    <div>
+                      <span className={`block font-bold text-sm ${isActive ? 'text-white' : 'text-slate-400'}`}>
+                        {feature.title}
+                      </span>
+                      {isActive && <span className="text-xs text-blue-300 block mt-0.5">{feature.description}</span>}
+                    </div>
+                    {isActive && <ArrowRight className="w-4 h-4 ml-auto text-blue-400" />}
+                  </button>
+                );
+              })}
             </div>
           </motion.div>
-        </AnimatePresence>
 
-        {/* Navigation dots */}
-        <div className="flex justify-center gap-2 mt-6">
-          {features.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => setActiveFeature(i)}
-              className={`w-2 h-2 rounded-full ${
-                activeFeature === i
-                  ? "w-6 bg-gradient-to-r from-blue-500 to-cyan-500"
-                  : "bg-gray-300 hover:bg-gray-400"
-              }`}
-            />
-          ))}
+          {/* --- RIGHT PANEL: Dynamic Content (Light Theme) --- */}
+          <div className="lg:w-7/12 w-full lg:sticky lg:top-32">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeFeature}
+                initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                transition={{ duration: 0.4, ease: "circOut" }}
+                className="bg-white rounded-[2.5rem] shadow-2xl shadow-slate-200/50 border border-slate-100 overflow-hidden flex flex-col h-full min-h-[600px]"
+              >
+                
+                {/* 1. Visual Header */}
+                <div className={`relative h-72 w-full bg-gradient-to-br ${features[activeFeature].gradient} p-10 flex flex-col justify-end overflow-hidden`}>
+                    
+                    {/* Grid Pattern */}
+                    <div className="absolute inset-0 opacity-20 bg-[linear-gradient(to_right,#ffffff20_1px,transparent_1px),linear-gradient(to_bottom,#ffffff20_1px,transparent_1px)] [background-size:24px_24px]"></div>
+                    
+                    {/* Floating Giant Icon */}
+                    <motion.div 
+                        initial={{ opacity: 0, scale: 0.8, rotate: 10, y: 50 }}
+                        animate={{ opacity: 0.2, scale: 1, rotate: 0, y: 0 }}
+                        transition={{ duration: 0.6, delay: 0.1 }}
+                        className="absolute -bottom-10 -right-10"
+                    >
+                        {React.createElement(features[activeFeature].icon, { className: "w-80 h-80 text-white" })}
+                    </motion.div>
+
+                    {/* Title */}
+                    <motion.div 
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.1 }}
+                        className="relative z-10"
+                    >
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md border border-white/20 text-white text-xs font-bold uppercase tracking-wider mb-4">
+                            Feature Highlight
+                        </div>
+                        <h2 className="text-5xl md:text-6xl font-black text-white tracking-tight leading-none">
+                            {features[activeFeature].title}
+                        </h2>
+                    </motion.div>
+                </div>
+
+                {/* 2. Content Body */}
+                <div className="p-10 flex flex-col flex-grow">
+                    
+                    <p className="text-xl text-slate-600 leading-relaxed mb-10 font-medium">
+                        {features[activeFeature].description} Our system ensures a smooth experience, allowing you to focus on the event while we handle the data.
+                    </p>
+
+                    <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-6 flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-amber-500" /> Key Capabilities
+                    </h3>
+
+                    {/* Feature Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-auto">
+                        {features[activeFeature].details.map((detail, index) => (
+                            <motion.div
+                                key={index}
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: 0.3 + (index * 0.1) }}
+                                className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100 group hover:border-slate-200 hover:bg-white hover:shadow-md transition-all duration-300"
+                            >
+                                <div className={`p-2 rounded-xl bg-white shadow-sm ${features[activeFeature].color}`}>
+                                    <CheckCircle2 className="w-5 h-5" />
+                                </div>
+                                <span className="text-sm font-bold text-slate-700">{detail}</span>
+                            </motion.div>
+                        ))}
+                    </div>
+
+                    {/* 3. Footer / Progress */}
+                    <div className="mt-12 pt-6 border-t border-slate-100 flex items-center justify-between">
+                        <div className="flex items-center gap-3 text-sm text-slate-400 font-mono">
+                            <span>0{activeFeature + 1}</span>
+                            <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                <motion.div 
+                                    layoutId="progressBar"
+                                    className={`h-full bg-gradient-to-r ${features[activeFeature].gradient}`}
+                                />
+                            </div>
+                            <span>0{features.length}</span>
+                        </div>
+
+                        <button className="flex items-center gap-2 text-sm font-bold text-slate-900 hover:text-blue-600 transition-colors cursor-pointer group">
+                            Learn More 
+                            <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                        </button>
+                    </div>
+
+                </div>
+              </motion.div>
+            </AnimatePresence>
+          </div>
+
         </div>
       </div>
     </div>

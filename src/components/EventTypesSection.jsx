@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
 import {
   Building2,
@@ -7,10 +7,8 @@ import {
   Music,
   Globe,
   PartyPopper,
-  ChevronRight,
-  Calendar,
-  MapPin,
-  UsersRound,
+  ArrowRight,
+  Sparkles,
 } from "lucide-react";
 import img1 from "../assets/EventType/img1.avif";
 import img2 from "../assets/EventType/img2.avif";
@@ -19,352 +17,183 @@ import img4 from "../assets/EventType/img4.avif";
 import img5 from "../assets/EventType/img5.avif";
 import img6 from "../assets/EventType/img6.jpg";
 
-
-
-
 const EventTypesSection = () => {
+  // Default to the first item being active
+  const [activeId, setActiveId] = useState(1);
+
   const eventTypes = [
     {
       id: 1,
-      title: "Corporate Events",
-      description:
-        "Professional gatherings designed for business networking, conferences, product launches, and corporate meetings with strategic objectives.",
+      title: "Corporate",
+      subtitle: "Strategy",
+      description: "Networking summits, product launches, and high-stakes meetings.",
       icon: Building2,
-      color: "from-blue-500 to-blue-700",
-      bgColor: "bg-blue-50",
-      examples: [
-        "Conferences",
-        "Seminars",
-        "Product Launches",
-        "Annual Meetings",
-        "Team Building",
-      ],
-      features: [
-        "Professional Networking",
-        "Business Presentations",
-        "Strategic Planning",
-        "Brand Promotion",
-      ],
       image: img1,
+      color: "bg-blue-600",
     },
     {
       id: 2,
-      title: "Social Events",
-      description:
-        "Personal celebrations and gatherings focused on social interaction, entertainment, and building personal relationships.",
+      title: "Social",
+      subtitle: "Celebration",
+      description: "Weddings, anniversaries, and grand social gatherings.",
       icon: Users,
-      color: "from-green-500 to-green-700",
-      bgColor: "bg-green-50",
-      examples: [
-        "Weddings",
-        "Birthday Parties",
-        "Anniversaries",
-        "Reunions",
-        "Baby Showers",
-      ],
-      features: [
-        "Social Networking",
-        "Entertainment",
-        "Celebration",
-        "Personal Connections",
-      ],
       image: img2,
+      color: "bg-emerald-600",
     },
     {
       id: 3,
-      title: "Educational Events",
-      description:
-        "Exciting school gatherings and celebrations that showcase student talents, promote healthy competition, and foster school community spirit.",
+      title: "Academic",
+      subtitle: "Knowledge",
+      description: "Graduations, science fairs, and educational showcases.",
       icon: GraduationCap,
-      color: "from-purple-500 to-purple-700",
-      bgColor: "bg-purple-50",
-      examples: [
-        "Annual Day",
-        "Sports Day",
-        "Science Fair",
-        "Cultural Fest",
-        "Graduation Ceremony",
-        "Parents-Teacher Meeting",
-      ],
-      features: [
-        "Student Performance",
-        "Talent Showcase",
-        "Healthy Competition",
-        "Community Building",
-      ],
       image: img3,
+      color: "bg-violet-600",
     },
     {
       id: 4,
-      title: "Entertainment Events",
-      description:
-        "Events focused on amusement, performances, and recreational activities for audience enjoyment and engagement.",
+      title: "Entertainment",
+      subtitle: "Spectacle",
+      description: "Concerts, award nights, and immersive live performances.",
       icon: Music,
-      color: "from-pink-500 to-pink-700",
-      bgColor: "bg-pink-50",
-      examples: [
-        "Concerts",
-        "Music Festivals",
-        "Stand-up Comedy",
-        "Movie Premieres",
-        "Award Shows",
-      ],
-      features: [
-        "Live Performances",
-        "Audience Engagement",
-        "Entertainment Production",
-        "Media Coverage",
-      ],
       image: img4,
+      color: "bg-pink-600",
     },
     {
       id: 5,
-      title: "Cultural Events",
-      description:
-        "Celebrations of heritage, traditions, arts, and customs that showcase cultural diversity and artistic expressions.",
+      title: "Culture",
+      subtitle: "Heritage",
+      description: "Festivals and expos that celebrate tradition and community.",
       icon: Globe,
-      color: "from-amber-500 to-amber-700",
-      bgColor: "bg-amber-50",
-      examples: [
-        "Art Exhibitions",
-        "Cultural Festivals",
-        "Heritage Celebrations",
-        "Traditional Performances",
-        "Museum Events",
-      ],
-      features: [
-        "Cultural Preservation",
-        "Artistic Expression",
-        "Community Engagement",
-        "Tradition Showcase",
-      ],
       image: img5,
+      color: "bg-amber-600",
     },
     {
       id: 6,
-      title: "Festive Events",
-      description:
-        "Seasonal and holiday celebrations marked by joy, tradition, and community participation in festive atmospheres.",
+      title: "Seasonal",
+      subtitle: "Festivity",
+      description: "Holiday galas and seasonal parties that bring cheer.",
       icon: PartyPopper,
-      color: "from-red-500 to-red-700",
-      bgColor: "bg-red-50",
-      examples: [
-        "Christmas Parties",
-        "Diwali Celebrations",
-        "Eid Festivals",
-        "New Year Eve",
-        "Seasonal Carnivals",
-      ],
-      features: [
-        "Seasonal Celebration",
-        "Traditional Rituals",
-        "Community Bonding",
-        "Festive Atmosphere",
-      ],
       image: img6,
+      color: "bg-red-600",
     },
   ];
 
- 
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.2,
-      },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 30 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: 0.6,
-        ease: "easeOut",
-      },
-    },
-  };
-
-  const cardVariants = {
-    hidden: { opacity: 0, scale: 0.9 },
-    visible: {
-      opacity: 1,
-      scale: 1,
-      transition: {
-        type: "spring",
-        stiffness: 100,
-        damping: 15,
-      },
-    },
-    hover: {
-      y: -5,
-      boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-      transition: {
-        type: "spring",
-        stiffness: 400,
-        damping: 10,
-      },
-    },
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-20 px-4 sm:px-6 lg:px-8">
-      {/* Header Section */}
-      <div className="max-w-7xl mx-auto">
-        <motion.div
-          className="text-center mb-16"
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-        >
-          <div className="inline-flex items-center px-4 py-2 bg-blue-50 rounded-full border border-blue-200 mb-6">
-            <Calendar className="w-4 h-4 text-blue-600 mr-2" />
-            <span className="text-blue-700 font-semibold text-sm">
-              Event Categories
-            </span>
-          </div>
-
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-            Types of{" "}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
-              Events We Manage
-            </span>
-          </h1>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-            From corporate gatherings to festive celebrations, we specialize in
-            managing diverse events with professional excellence and creative
-            flair.
-          </p>
-        </motion.div>
-
-     
-        {/* Event Types Grid */}
-        <motion.div
-          className="space-y-12"
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-        >
-          {eventTypes.map((eventType, index) => (
-            <motion.div
-              key={eventType.id}
-              variants={itemVariants}
-              className={`flex flex-col lg:flex-row ${
-                index % 2 === 0 ? "lg:flex-row" : "lg:flex-row-reverse"
-              } gap-8 lg:gap-12 items-center`}
-            >
-              {/* Event Content */}
-              <motion.div
-                className="lg:w-1/2"
-                variants={cardVariants}
-                whileHover="hover"
-              >
-                <div className="bg-white rounded-2xl p-8 shadow-xl border border-gray-100 h-full">
-                  {/* Icon and Header */}
-                  <div className="flex items-start mb-6">
-                    <div
-                      className={`p-4 rounded-2xl bg-gradient-to-r ${eventType.color} shadow-lg mr-4`}
-                    >
-                      <eventType.icon className="w-8 h-8 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                        {eventType.title}
-                      </h3>
-                      <p className="text-gray-600">{eventType.description}</p>
-                    </div>
-                  </div>
-
-                  {/* Examples */}
-                  <div className="mb-6">
-                    <h4 className="text-lg font-semibold text-gray-800 mb-3">
-                      Common Examples:
-                    </h4>
-                    <div className="flex flex-wrap gap-2">
-                      {eventType.examples.map((example, idx) => (
-                        <span
-                          key={idx}
-                          className={`px-3 py-1.5 rounded-full text-sm font-medium ${eventType.bgColor} text-gray-700 border border-gray-200`}
-                        >
-                          {example}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Features */}
-                  <div className="mb-6">
-                    <h4 className="text-lg font-semibold text-gray-800 mb-3">
-                      Key Features:
-                    </h4>
-                    <ul className="space-y-2">
-                      {eventType.features.map((feature, idx) => (
-                        <li
-                          key={idx}
-                          className="flex items-center text-gray-600"
-                        >
-                          <ChevronRight
-                            className={`w-4 h-4 mr-2 ${
-                              eventType.color
-                                .replace("from-", "text-")
-                                .split(" ")[0]
-                            }`}
-                          />
-                          {feature}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  {/* Hover Border Effect */}
-                  <div
-                    className={`absolute bottom-0 left-0 w-0 h-1 bg-gradient-to-r ${eventType.color} group-hover:w-full transition-all duration-500 rounded-b-2xl`}
-                  />
-                </div>
-              </motion.div>
-
-              {/* Image Separator */}
-              <div className="lg:w-1/2 relative">
-                <div className="relative rounded-2xl overflow-hidden shadow-2xl">
-                  <div className="aspect-video w-full overflow-hidden rounded-2xl">
-                    <img
-                      src={eventType.image}
-                      alt={eventType.title}
-                      className="w-full h-full object-cover transform hover:scale-105 transition-transform duration-700"
-                    />
-                    <div
-                      className={`absolute inset-0 bg-gradient-to-r ${eventType.color} opacity-20 mix-blend-overlay`}
-                    />
-                  </div>
-
-                  {/* Overlay Text */}
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-6">
-                    <h4 className="text-white text-xl font-bold mb-2">
-                      Professional Management
-                    </h4>
-                    <p className="text-gray-200 text-sm">
-                      Complete end-to-end event planning and execution
-                    </p>
-                  </div>
-                </div>
-
-                {/* Decorative Element */}
-                <div
-                  className={`absolute -top-4 -right-4 w-24 h-24 bg-gradient-to-r ${eventType.color} opacity-10 rounded-full blur-xl`}
-                />
-              </div>
-            </motion.div>
-          ))}
-        </motion.div>
-
+    <section className="bg-white font-sans text-slate-900 py-24 relative overflow-hidden selection:bg-slate-900 selection:text-white">
       
+      {/* Background Decor */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+         <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-slate-50 rounded-full blur-3xl opacity-50"></div>
+         <div className="absolute bottom-[-10%] left-[-5%] w-[500px] h-[500px] bg-blue-50 rounded-full blur-3xl opacity-50"></div>
       </div>
-    </div>
+
+      <div className="container mx-auto px-6 lg:px-12 relative z-10">
+        
+        {/* --- Header --- */}
+        <div className="text-center max-w-3xl mx-auto mb-16">
+            <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 text-white text-xs font-bold uppercase tracking-wider mb-6 shadow-xl shadow-slate-200"
+            >
+                <Sparkles className="w-3 h-3" /> Our Expertise
+            </motion.div>
+            
+            <motion.h2 
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.1 }}
+                className="text-4xl md:text-6xl font-black text-slate-900 tracking-tight leading-tight mb-6"
+            >
+                Crafting experiences <br/> for every occasion.
+            </motion.h2>
+            
+            <motion.p 
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.2 }}
+                className="text-lg text-slate-500 font-medium"
+            >
+                Explore our specialized event categories tailored to your needs.
+            </motion.p>
+        </div>
+
+        {/* --- Horizontal Accordion Gallery --- */}
+        <div className="flex flex-col lg:flex-row gap-4 h-[800px] lg:h-[500px] w-full">
+            {eventTypes.map((event) => {
+                const isActive = activeId === event.id;
+                return (
+                    <motion.div
+                        key={event.id}
+                        layout
+                        onClick={() => setActiveId(event.id)}
+                        onHoverStart={() => setActiveId(event.id)}
+                        className={`
+                            relative rounded-3xl overflow-hidden cursor-pointer transition-all duration-500 ease-[cubic-bezier(0.25,1,0.5,1)]
+                            ${isActive ? 'lg:flex-[3.5] flex-[3]' : 'lg:flex-[0.5] flex-[1]'}
+                            group
+                        `}
+                    >
+                        {/* Background Image */}
+                        <img 
+                            src={event.image} 
+                            alt={event.title} 
+                            className={`
+                                absolute inset-0 w-full h-full object-cover transition-transform duration-700
+                                ${isActive ? 'scale-100' : 'scale-125 grayscale group-hover:grayscale-0'}
+                            `}
+                        />
+                        
+                        {/* Dark Overlay */}
+                        <div className={`absolute inset-0 transition-opacity duration-500 ${isActive ? 'bg-black/40' : 'bg-black/60 group-hover:bg-black/50'}`} />
+
+                        {/* Content */}
+                        <div className="absolute inset-0 p-6 lg:p-8 flex flex-col justify-end text-white">
+                            
+                            {/* Inactive State: Vertical Text (Desktop) / Minimal (Mobile) */}
+                            {!isActive && (
+                                <div className="absolute inset-0 flex items-center justify-center lg:rotate-[-90deg] opacity-80 group-hover:opacity-100 transition-opacity">
+                                    <span className="text-xl lg:text-2xl font-bold tracking-widest uppercase whitespace-nowrap">
+                                        {event.title}
+                                    </span>
+                                </div>
+                            )}
+
+                            {/* Active State: Full Content */}
+                            <div className={`transition-all duration-500 delay-100 ${isActive ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 hidden'}`}>
+                                <div className={`w-12 h-12 rounded-2xl ${event.color} flex items-center justify-center mb-6 shadow-lg`}>
+                                    <event.icon className="w-6 h-6 text-white" />
+                                </div>
+                                
+                                <h3 className="text-3xl md:text-4xl font-bold mb-3 leading-tight">
+                                    {event.title}
+                                </h3>
+                                
+                                <p className="text-white/80 text-sm md:text-base leading-relaxed max-w-md mb-6">
+                                    {event.description}
+                                </p>
+
+                                <div className="flex items-center gap-3 text-sm font-bold uppercase tracking-widest group-hover:gap-4 transition-all">
+                                    Explore <ArrowRight className="w-4 h-4" />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Mobile Active Indicator (Optional for clarity on small screens) */}
+                        {isActive && (
+                            <div className={`absolute top-0 left-0 w-full h-1 ${event.color} lg:hidden`} />
+                        )}
+                        
+                    </motion.div>
+                );
+            })}
+        </div>
+
+      </div>
+    </section>
   );
 };
 

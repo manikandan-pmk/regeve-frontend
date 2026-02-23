@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
+import axios from "axios";
 
 const BiddingForm = () => {
-  const { biddingId } = useParams();
+  const { documentId } = useParams();
 
   // 🔹 STATES
   const [biddingName, setBiddingName] = useState("");
   const [isFetchingInfo, setIsFetchingInfo] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState(null); // { type: 'success' | 'error', text: '' }
+  const [message, setMessage] = useState(null);
+  const [realBiddingId, setRealBiddingId] = useState(null);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -18,17 +20,25 @@ const BiddingForm = () => {
     gender: "Male",
   });
 
+  
   // 🔹 FETCH BIDDING DETAILS (For Dynamic Header)
   useEffect(() => {
+
     const fetchBiddingDetails = async () => {
-      if (!biddingId) return;
+      if (!documentId) return;
+
       try {
         const response = await fetch(
-          `http://localhost:1337/api/biddings/${biddingId}`,
+          `https://api.regeve.in/api/biddings/${documentId}`,
         );
+
         const result = await response.json();
+
         if (response.ok && result.data) {
-          setBiddingName(result.data.nameOfBid);
+          setRealBiddingId(result.data.id); // ✅ Correct
+          setBiddingName(
+            result.data.attributes?.nameOfBid || "Registration Form",
+          );
         } else {
           setBiddingName("Registration Form");
         }
@@ -40,10 +50,10 @@ const BiddingForm = () => {
     };
 
     fetchBiddingDetails();
-  }, [biddingId]);
+  }, [documentId]); // ✅ fixed
 
   // 🔹 EARLY RETURN FOR INVALID LINK
-  if (!biddingId) {
+  if (!documentId) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
         <div className="w-20 h-20 bg-red-100 text-red-600 rounded-full flex items-center justify-center text-4xl mb-4 shadow-lg shadow-red-100">
@@ -84,6 +94,7 @@ const BiddingForm = () => {
       });
       return;
     }
+
     if (formData.whatsappnumber.length !== 10) {
       setMessage({
         type: "error",
@@ -94,13 +105,9 @@ const BiddingForm = () => {
 
     setLoading(true);
 
-    // 2️⃣ PREPARE PAYLOAD
-    const generatedCandidateId = `CAN-${Math.floor(10000 + Math.random() * 90000)}`;
-
     const payload = {
       data: {
-        bidding: biddingId, // Strapi v5 Document API links using this string
-        candidateid: generatedCandidateId,
+        biddingId: realBiddingId,
         name: formData.name,
         phonenumber: Number(formData.phonenumber),
         whatsappnumber: Number(formData.whatsappnumber),
@@ -109,41 +116,22 @@ const BiddingForm = () => {
       },
     };
 
-    // 3️⃣ SUBMIT TO BACKEND
     try {
-      const response = await fetch(
-        "http://localhost:1337/api/biddingparticipantforms",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        },
+      const response = await axios.post(
+        "https://api.regeve.in/api/bidding-participants/create",
+        payload,
       );
 
-      const result = await response.json();
+      const result = response.data;
 
-      if (!response.ok) {
-        if (
-          result?.error?.message === "Already registered with this phone number"
-        ) {
-          setMessage({
-            type: "error",
-            text: "You are already registered for this bidding",
-          });
-          return;
-        }
-
-        throw new Error(
-          result.error?.message || "Failed to submit registration.",
-        );
-      }
-
-      // Success Reset
+      // ✅ Success
       setMessage({
         type: "success",
-        text: `Registration successful! Your Candidate ID is ${generatedCandidateId}.`,
+        text: `Registration successful! Your Candidate ID is ${result.data.candidateid}`,
       });
+      console.log("Submitting with ID:", realBiddingId);
 
+      // Reset form
       setFormData({
         name: "",
         phonenumber: "",
@@ -152,7 +140,23 @@ const BiddingForm = () => {
         gender: "Male",
       });
     } catch (error) {
-      setMessage({ type: "error", text: error.message });
+      // Axios error handling
+      if (error.response) {
+        const backendMessage =
+          error.response.data?.error?.message ||
+          error.response.data?.message ||
+          "Failed to submit registration.";
+
+        setMessage({
+          type: "error",
+          text: backendMessage,
+        });
+      } else {
+        setMessage({
+          type: "error",
+          text: "Network error. Please try again.",
+        });
+      }
     } finally {
       setLoading(false);
     }

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LogIn,
@@ -8,10 +8,8 @@ import {
   CheckCircle,
   XCircle,
   ChevronDown,
-  ChevronUp,
   User,
-  Settings,
-  UserCircle,
+  LayoutDashboard,
 } from "lucide-react";
 import Login from "../pages/Auth/Login";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -33,8 +31,21 @@ const Navbar = () => {
     type: "success",
   });
 
+  const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Check if we are on the home page
+  const isHome = location.pathname === "/";
+
+  // Scroll listener to toggle glass effect
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const openLogin = () => setAuthModal({ isOpen: true, type: "login" });
   const closeAuth = () => setAuthModal({ isOpen: false, type: "login" });
@@ -60,7 +71,6 @@ const Navbar = () => {
   const parsedUser = storedUser ? JSON.parse(storedUser) : null;
 
   const userName = parsedUser?.name || "";
-  const userEmail = parsedUser?.email || "";
   const adminId = parsedUser?.adminId || null;
   const isLoggedIn = !!localStorage.getItem("jwt");
 
@@ -111,489 +121,395 @@ const Navbar = () => {
 
   const isActive = (path) => location.pathname === path;
 
-  // Animation variants
-  const menuVariants = {
-    closed: {
-      opacity: 0,
-      height: 0,
-      transition: {
-        duration: 0.3,
-        ease: "easeInOut",
-      },
-    },
-    open: {
+  // --- Animation Variants ---
+  const navbarVariants = {
+    hidden: { y: -100, opacity: 0 },
+    visible: { 
+      y: 0, 
       opacity: 1,
-      height: "auto",
-      transition: {
-        duration: 0.3,
-        ease: "easeInOut",
-      },
+      transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] }
     },
   };
 
   const dropdownVariants = {
-    closed: {
-      opacity: 0,
-      y: -10,
-      scale: 0.95,
-      transition: {
-        duration: 0.2,
-      },
+    closed: { 
+      opacity: 0, 
+      y: -8, 
+      scale: 0.98,
+      display: "none",
+      transition: { duration: 0.1 }
     },
-    open: {
-      opacity: 1,
-      y: 0,
-      scale: 1,
-      transition: {
-        duration: 0.25,
-        ease: "easeOut",
-      },
+    open: { 
+      opacity: 1, 
+      y: 0, 
+      scale: 1, 
+      display: "block",
+      transition: { 
+        type: "spring", 
+        stiffness: 400, 
+        damping: 30,
+        delayChildren: 0.1,
+        staggerChildren: 0.05
+      }
     },
   };
 
   const itemVariants = {
-    hover: {
-      y: -2,
-      transition: {
-        type: "spring",
-        stiffness: 400,
-        damping: 25,
-      },
-    },
-    tap: {
-      scale: 0.95,
-    },
+    hidden: { opacity: 0, x: -10 },
+    show: { opacity: 1, x: 0 },
+  };
+
+  const mobileMenuVariants = {
+    closed: { opacity: 0, height: 0 },
+    open: { opacity: 1, height: "auto", transition: { duration: 0.3, ease: "easeInOut" } },
   };
 
   return (
     <>
-      <nav className="fixed top-0 left-0 right-0 bg-white border-b border-gray-200 z-50 shadow-sm">
+      <motion.nav
+        initial="hidden"
+        animate="visible"
+        variants={navbarVariants}
+        // LOGIC UPDATE: 
+        // If (Scrolled OR Menu Open OR Not Homepage) -> Dark Background
+        // Else -> Transparent
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+          scrolled || isMenuOpen || !isHome
+            ? "bg-black/80 backdrop-blur-md shadow-lg border-b border-white/10"
+            : "bg-transparent border-b border-transparent"
+        }`}
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            {/* Logo */}
+          <div className="flex justify-between items-center h-20">
+            {/* Logo Area */}
             <motion.div
-              className="flex items-center space-x-3 cursor-pointer flex-shrink-0"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5 }}
+              className="flex items-center space-x-3 cursor-pointer group"
               onClick={() => navigate("/")}
               whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
             >
-              <img src={Logo} alt="Regeve Logo" className="w-20 h-15" />
+              <div className="relative">
+                {/* Glow effect for logo */}
+                <div className="absolute inset-0 bg-white rounded-full blur-xl opacity-10 group-hover:opacity-20 transition-opacity duration-300"></div>
+                
+                {/* LOGO UPDATE: Added brightness-0 invert to force full white */}
+                <img 
+                  src={Logo} 
+                  alt="Regeve Logo" 
+                  className="w-16 h-auto relative z-10 brightness-0 invert" 
+                />
+              </div>
               <div className="flex flex-col">
-                <span className="text-2xl font-bold text-gray-800 tracking-tight">
+                <span className="text-2xl font-black text-white tracking-tighter transition-colors duration-300">
                   REGEVE
+                </span>
+                <span className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold -mt-1">
+                  Event Solutions
                 </span>
               </div>
             </motion.div>
 
-            {/* Desktop Navigation - Centered */}
-            <div className="hidden lg:flex items-center justify-center flex-1 px-8">
-              <div className="flex items-center space-x-3">
-                {navItems.map((item, index) =>
-                  item.dropdown ? (
-                    <div
-                      key={item.name}
-                      className="relative "
-                      onMouseEnter={() => setOpenDropdown(item.name)}
-                      onMouseLeave={() => setOpenDropdown(null)}
-                    >
-                      <motion.button
-                        onClick={() =>
-                          setOpenDropdown(
-                            openDropdown === item.name ? null : item.name
-                          )
-                        }
-                        className={`flex items-center space-x-1 cursor-pointer px-4 py-2.5 rounded-md font-medium transition-all duration-200 ${
+            {/* Desktop Navigation */}
+            <div className="hidden lg:flex items-center space-x-1">
+              {navItems.map((item) => (
+                <div
+                  key={item.name}
+                  className="relative px-1"
+                  onMouseEnter={() => item.dropdown && setOpenDropdown(item.name)}
+                  onMouseLeave={() => item.dropdown && setOpenDropdown(null)}
+                >
+                  {item.dropdown ? (
+                    <div className="relative">
+                      <button
+                        className={`flex items-center space-x-1 px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 cursor-pointer ${
                           openDropdown === item.name
-                            ? "text-blue-700 bg-blue-50"
-                            : "text-gray-700 hover:text-blue-700 hover:bg-blue-50"
+                            ? "bg-white/10 text-white"
+                            : "text-gray-300 hover:text-white hover:bg-white/5"
                         }`}
-                        variants={itemVariants}
-                        whileHover="hover"
-                        whileTap="tap"
                       >
-                        <span className="text-md">{item.name}</span>
+                        <span>{item.name}</span>
                         <ChevronDown
-                          className={`w-3 h-3 transition-transform duration-200 ${
-                            openDropdown === item.name
-                              ? "rotate-180 text-blue-600"
-                              : "text-gray-400"
+                          className={`w-3.5 h-3.5 transition-transform duration-300 ${
+                            openDropdown === item.name ? "rotate-180 text-white" : "text-gray-400"
                           }`}
                         />
-                      </motion.button>
+                      </button>
 
                       {/* Desktop Dropdown */}
                       <AnimatePresence>
                         {openDropdown === item.name && (
                           <motion.div
-                            className="absolute left-1/2 transform -translate-x-1/2 mt-2 w-48 bg-white border border-gray-200 shadow-xl rounded-md overflow-hidden"
                             variants={dropdownVariants}
                             initial="closed"
                             animate="open"
                             exit="closed"
+                            className="absolute top-full left-0 pt-4 w-64 z-50"
                           >
-                            {item.items.map((sub, i) => (
-                              <motion.button
+                            <div className="bg-black/90 backdrop-blur-xl rounded-2xl border border-white/10 overflow-hidden shadow-2xl p-2 space-y-1">
+                              {item.items.map((sub) => (
+                                <motion.button
+                                  key={sub.name}
+                                  variants={itemVariants}
+                                  onClick={() => {
+                                    navigate(sub.path);
+                                    setOpenDropdown(null);
+                                  }}
+                                  className="w-full text-left px-4 py-3 rounded-xl text-sm font-medium text-gray-300 hover:bg-white/10 hover:text-white transition-all duration-200 group flex items-center justify-between cursor-pointer"
+                                >
+                                  <span>{sub.name}</span>
+                                  <span className="opacity-0 group-hover:opacity-100 transform translate-x-[-10px] group-hover:translate-x-0 transition-all duration-200 text-white">
+                                    →
+                                  </span>
+                                </motion.button>
+                              ))}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => navigate(item.path)}
+                      className={`relative px-5 py-2 rounded-full text-sm font-medium transition-all duration-300 cursor-pointer ${
+                        isActive(item.path)
+                          ? "text-white bg-white/10 shadow-sm border border-white/10"
+                          : "text-gray-300 hover:text-white hover:bg-white/5"
+                      }`}
+                    >
+                      {item.name}
+                    </button>
+                  )}
+                </div>
+              ))}
+
+              {isLoggedIn && (
+                <button
+                  onClick={() => navigate(`/${adminId}/admindashboard`)}
+                  className={`ml-2 flex items-center space-x-2 px-5 py-2 rounded-full text-sm font-medium transition-all duration-300 cursor-pointer ${
+                    isActive(`/${adminId}/admindashboard`)
+                      ? "text-white bg-white/20 border border-white/20"
+                      : "text-gray-300 hover:text-white hover:bg-white/10"
+                  }`}
+                >
+                  <LayoutDashboard className="w-4 h-4" />
+                  <span>Dashboard</span>
+                </button>
+              )}
+            </div>
+
+            {/* Right Side - Auth */}
+            <div className="hidden lg:flex items-center space-x-6">
+              <div className="h-6 w-px bg-white/20 mx-2"></div>
+              {isLoggedIn ? (
+                <div 
+                  className="relative" 
+                  onMouseEnter={() => setUserDropdown(true)}
+                  onMouseLeave={() => setUserDropdown(false)}
+                >
+                  <motion.button
+                    onClick={toggleUserDropdown}
+                    className="flex items-center space-x-2 p-1 pl-2 pr-4 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/30 transition-all duration-300 group cursor-pointer"
+                  >
+                    <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-gray-700 to-gray-900 flex items-center justify-center border border-white/20 text-white font-bold text-sm">
+                      {userName ? userName.charAt(0).toUpperCase() : <User size={16} />}
+                    </div>
+                    <div className="flex flex-col items-start">
+                        <span className="text-xs text-gray-400 font-medium">Hello,</span>
+                        <span className="text-sm font-bold text-white leading-none">{userName || "Admin"}</span>
+                    </div>
+                    <ChevronDown className={`w-4 h-4 text-gray-400 group-hover:text-white transition-transform duration-300 ${userDropdown ? "rotate-180" : ""}`} />
+                  </motion.button>
+
+                  <AnimatePresence>
+                    {userDropdown && (
+                      <motion.div
+                        variants={dropdownVariants}
+                        initial="closed"
+                        animate="open"
+                        exit="closed"
+                        className="absolute right-0 top-full pt-4 w-60 z-50"
+                      >
+                         <div className="bg-black/90 backdrop-blur-xl rounded-2xl border border-white/10 overflow-hidden shadow-2xl">
+                            <div className="p-4 bg-white/5 border-b border-white/10">
+                                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Signed in as</p>
+                                <p className="font-bold text-white truncate">{userName || "Administrator"}</p>
+                            </div>
+                            <div className="p-2">
+                                <button
+                                  onClick={handleLogout}
+                                  className="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-red-400 hover:bg-red-500/10 transition-colors text-sm font-medium cursor-pointer"
+                                >
+                                    <LogOut size={18} />
+                                    <span>Sign out</span>
+                                </button>
+                            </div>
+                         </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              ) : (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={openLogin}
+                  className="group relative px-6 py-2.5 bg-transparent border border-white/30 text-white rounded-full font-medium hover:bg-white hover:text-black transition-all duration-300 overflow-hidden cursor-pointer"
+                >
+                  <div className="relative flex items-center space-x-2">
+                    <LogIn className="w-4 h-4" />
+                    <span>Login</span>
+                  </div>
+                </motion.button>
+              )}
+            </div>
+
+            {/* Mobile Toggle */}
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={toggleMenu}
+              className="lg:hidden p-2 text-white hover:bg-white/10 rounded-xl transition-colors cursor-pointer"
+            >
+              {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            </motion.button>
+          </div>
+        </div>
+
+        {/* Mobile Menu */}
+        <AnimatePresence>
+          {isMenuOpen && (
+            <motion.div
+              variants={mobileMenuVariants}
+              initial="closed"
+              animate="open"
+              exit="closed"
+              className="lg:hidden bg-black/95 backdrop-blur-xl border-t border-white/10 overflow-hidden"
+            >
+              <div className="px-4 pt-4 pb-8 space-y-2">
+                {navItems.map((item) =>
+                  item.dropdown ? (
+                    <div key={item.name} className="bg-white/5 rounded-2xl overflow-hidden border border-white/5">
+                      <button
+                        onClick={() => toggleMobileDropdown(item.name)}
+                        className="w-full flex items-center justify-between px-5 py-4 text-white font-semibold cursor-pointer"
+                      >
+                        {item.name}
+                        <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${mobileDropdown === item.name ? "rotate-180 text-white" : "text-gray-400"}`} />
+                      </button>
+                      <AnimatePresence>
+                        {mobileDropdown === item.name && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="bg-black/50 border-t border-white/5"
+                          >
+                            {item.items.map((sub) => (
+                              <button
                                 key={sub.name}
                                 onClick={() => {
                                   navigate(sub.path);
-                                  setOpenDropdown(null);
+                                  toggleMenu();
                                 }}
-                                className="w-full text-left px-4 cursor-pointer py-3 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-all duration-150 border-b border-gray-100 last:border-b-0"
-                                whileHover={{ x: 5 }}
-                                transition={{ duration: 0.2 }}
+                                className="w-full text-left px-8 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
                               >
                                 {sub.name}
-                              </motion.button>
+                              </button>
                             ))}
                           </motion.div>
                         )}
                       </AnimatePresence>
                     </div>
                   ) : (
-                    <motion.div
+                    <button
                       key={item.name}
-                      className="relative"
-                      variants={itemVariants}
-                      whileHover="hover"
-                      whileTap="tap"
+                      onClick={() => {
+                        navigate(item.path);
+                        toggleMenu();
+                      }}
+                      className={`block w-full text-left px-5 py-4 rounded-2xl font-semibold transition-all cursor-pointer ${
+                        isActive(item.path)
+                          ? "bg-white/10 text-white border border-white/10"
+                          : "text-gray-300 hover:bg-white/5 hover:text-white"
+                      }`}
                     >
-                      <button
-                        onClick={() => navigate(item.path)}
-                        className={`px-4 py-2.5 cursor-pointer rounded-md font-medium transition-all duration-200 text-md ${
-                          isActive(item.path)
-                            ? "text-blue-700 bg-blue-50"
-                            : "text-gray-700 hover:text-blue-700 hover:bg-blue-50"
-                        }`}
-                      >
-                        {item.name}
-                      </button>
-                    </motion.div>
+                      {item.name}
+                    </button>
                   )
                 )}
 
-                {/* Dashboard link for logged in users */}
                 {isLoggedIn && (
-                  <motion.div
-                    className="relative"
-                    variants={itemVariants}
-                    whileHover="hover"
-                    whileTap="tap"
-                  >
-                    <button
-                      onClick={() => navigate(`/${adminId}/admindashboard`)}
-                      className={`px-4 py-2.5 rounded-md cursor-pointer font-medium transition-all duration-200 text-md ${
-                        isActive(`/${adminId}/admindashboard`)
-                          ? "text-blue-700 bg-blue-50"
-                          : "text-gray-700 hover:text-blue-700 hover:bg-blue-50"
-                      }`}
-                    >
-                      Dashboard
-                    </button>
-                  </motion.div>
+                   <button
+                   onClick={() => {
+                     navigate(`/${adminId}/admindashboard`);
+                     toggleMenu();
+                   }}
+                   className={`block w-full text-left px-5 py-4 rounded-2xl font-semibold transition-all cursor-pointer ${
+                     isActive(`/${adminId}/admindashboard`)
+                       ? "bg-purple-500/20 text-purple-300"
+                       : "text-gray-300 hover:bg-white/5"
+                   }`}
+                 >
+                   Dashboard
+                 </button>
                 )}
-              </div>
-            </div>
 
-            {/* Desktop Right Section - User/Auth */}
-            <div className="hidden  lg:flex items-center space-x-4 flex-shrink-0">
-              {isLoggedIn ? (
-                <div className="relative">
-                  <motion.button
-                    onClick={toggleUserDropdown}
-                    className="flex items-center cursor-pointer space-x-3 px-4 py-2 rounded-lg hover:bg-gray-50 transition-all duration-200 border border-gray-200"
-                    variants={itemVariants}
-                    whileHover="hover"
-                    whileTap="tap"
-                  >
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-cyan-400 flex items-center justify-center">
-                      {userName ? (
-                        <span className="text-white text-sm font-semibold">
-                          {userName.charAt(0).toUpperCase()}
-                        </span>
-                      ) : (
-                        <User className="w-4 h-4 text-white" />
-                      )}
-                    </div>
-                    <div className="flex flex-col items-start">
-                      <span className="text-sm  font-medium text-gray-800">
-                        {userName || "Admin"}
-                      </span>
-                     
-                    </div>
-                    <ChevronDown
-                      className={`w-4 h-4 text-gray-500 cursor-pointer transition-transform duration-200 ${
-                        userDropdown ? "rotate-180" : ""
-                      }`}
-                    />
-                  </motion.button>
-
-                  {/* User Dropdown Menu */}
-                  <AnimatePresence>
-                    {userDropdown && (
-                      <motion.div
-                        className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 shadow-xl rounded-lg overflow-hidden"
-                        variants={dropdownVariants}
-                        initial="closed"
-                        animate="open"
-                        exit="closed"
-                        onMouseLeave={() => setUserDropdown(false)}
-                      >
-                        {/* User Info */}
-                        <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-cyan-400 flex items-center justify-center">
-                              {userName ? (
-                                <span className="text-white  font-semibold">
-                                  {userName.charAt(0).toUpperCase()}
-                                </span>
-                              ) : (
-                                <User className="w-5 h-5  text-white" />
-                              )}
-                            </div>
-                            <div>
-                              <div className="font-semibold cursor-pointer text-gray-800">
-                                {userName || "Admin User"}
-                              </div>
-                             
-                            </div>
-                          </div>
+                <div className="pt-4 mt-4 border-t border-white/10">
+                  {isLoggedIn ? (
+                    <div className="space-y-3">
+                        <div className="flex items-center space-x-3 px-5 py-2">
+                             <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-gray-700 to-gray-900 border border-white/10 flex items-center justify-center text-white font-bold shadow-md">
+                                {userName ? userName.charAt(0).toUpperCase() : <User />}
+                             </div>
+                             <div>
+                                 <p className="text-sm font-medium text-gray-400">Signed in as</p>
+                                 <p className="font-bold text-white">{userName || "Admin"}</p>
+                             </div>
                         </div>
-
-                        {/* Menu Items */}
-                        <div className="py-1">
-                          
-                         
-                          <div className="border-t border-gray-100 my-1"></div>
-                          <button
-                            onClick={handleLogout}
-                            className="w-full flex items-center cursor-pointer space-x-3 px-4 py-3 text-red-600 hover:bg-red-50 transition-all duration-150"
-                          >
-                            <LogOut className="w-4 h-4" />
-                            <span>Logout</span>
-                          </button>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              ) : (
-                <motion.div
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.5, delay: 0.3 }}
-                >
-                  <motion.button
-                    onClick={openLogin}
-                    className="px-6 cursor-pointer py-2.5 bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-lg font-medium shadow-sm hover:shadow-md transition-all duration-200 flex items-center space-x-2"
-                    variants={itemVariants}
-                    whileHover="hover"
-                    whileTap="tap"
-                  >
-                    <LogIn className="w-4 h-4" />
-                    <span>Login</span>
-                  </motion.button>
-                </motion.div>
-              )}
-            </div>
-
-            {/* Mobile Menu Button */}
-            <motion.button
-              className="lg:hidden p-2 rounded-md text-gray-700 hover:bg-gray-100 transition-all duration-200"
-              onClick={toggleMenu}
-              variants={itemVariants}
-              whileTap="tap"
-            >
-              {isMenuOpen ? (
-                <X className="w-6 h-6" />
-              ) : (
-                <Menu className="w-6 h-6" />
-              )}
-            </motion.button>
-          </div>
-
-          {/* Mobile Menu */}
-          <AnimatePresence>
-            {isMenuOpen && (
-              <motion.div
-                className="lg:hidden bg-white border-t border-gray-200 shadow-lg mt-1 rounded-b-lg overflow-hidden"
-                initial="closed"
-                animate="open"
-                exit="closed"
-                variants={menuVariants}
-              >
-                <div className="py-3 space-y-1">
-                  {navItems.map((item, index) =>
-                    item.dropdown ? (
-                      <div key={item.name} className="space-y-1">
-                        <motion.button
-                          onClick={() => toggleMobileDropdown(item.name)}
-                          className="w-full flex items-center justify-between px-4 py-3 text-gray-700 hover:bg-blue-50 rounded-md transition-all duration-200 font-medium"
-                          variants={itemVariants}
-                          whileTap="tap"
+                        <button
+                          onClick={handleLogout}
+                          className="w-full flex items-center justify-center space-x-2 px-5 py-4 bg-red-500/10 text-red-400 font-medium rounded-2xl hover:bg-red-500/20 transition-colors cursor-pointer"
                         >
-                          <span>{item.name}</span>
-                          {mobileDropdown === item.name ? (
-                            <ChevronUp className="w-4 h-4 text-blue-600" />
-                          ) : (
-                            <ChevronDown className="w-4 h-4 text-gray-400" />
-                          )}
-                        </motion.button>
-
-                        {/* Mobile Dropdown Content */}
-                        <AnimatePresence>
-                          {mobileDropdown === item.name && (
-                            <motion.div
-                              className="ml-4 space-y-1 border-l-2 border-blue-200 pl-4 py-2"
-                              variants={dropdownVariants}
-                              initial="closed"
-                              animate="open"
-                              exit="closed"
-                            >
-                              {item.items.map((sub) => (
-                                <motion.button
-                                  key={sub.name}
-                                  onClick={() => {
-                                    navigate(sub.path);
-                                    setIsMenuOpen(false);
-                                    setMobileDropdown(null);
-                                  }}
-                                  className="w-full text-left px-4 py-2.5 text-gray-600 hover:bg-blue-50 hover:text-blue-700 rounded-md transition-all duration-200 text-sm"
-                                  whileHover={{ x: 5 }}
-                                  transition={{ duration: 0.2 }}
-                                >
-                                  {sub.name}
-                                </motion.button>
-                              ))}
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </div>
-                    ) : (
-                      <motion.button
-                        key={item.name}
-                        onClick={() => {
-                          navigate(item.path);
-                          setIsMenuOpen(false);
-                        }}
-                        className={`w-full text-left px-4 py-3 rounded-md transition-all duration-200 font-medium ${
-                          isActive(item.path)
-                            ? "text-blue-700 bg-blue-50"
-                            : "text-gray-700 hover:bg-blue-50 hover:text-blue-700"
-                        }`}
-                        variants={itemVariants}
-                        whileTap="tap"
-                      >
-                        {item.name}
-                      </motion.button>
-                    )
-                  )}
-
-                  {/* Dashboard for mobile */}
-                  {isLoggedIn && (
-                    <motion.button
-                      onClick={() => {
-                        navigate(`/${adminId}/admindashboard`);
-                        setIsMenuOpen(false);
-                      }}
-                      className={`w-full text-left px-4 py-3 rounded-md transition-all duration-200 font-medium ${
-                        isActive(`/${adminId}/admindashboard`)
-                          ? "text-blue-700 bg-blue-50"
-                          : "text-gray-700 hover:bg-blue-50 hover:text-blue-700"
-                      }`}
-                      variants={itemVariants}
-                      whileTap="tap"
-                    >
-                      Dashboard
-                    </motion.button>
-                  )}
-
-                  {/* Mobile Auth Section */}
-                  <div className="pt-3 border-t border-gray-200 space-y-3">
-                    {isLoggedIn ? (
-                      <>
-                        <div className="px-4 py-3 bg-gray-50 rounded-md border border-gray-200">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-cyan-400 flex items-center justify-center">
-                              {userName ? (
-                                <span className="text-white font-semibold">
-                                  {userName.charAt(0).toUpperCase()}
-                                </span>
-                              ) : (
-                                <User className="w-5 h-5 text-white" />
-                              )}
-                            </div>
-                            <div className="flex-1">
-                              <div className="font-semibold text-gray-800">
-                                {userName || "Admin"}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        <motion.button
-                          onClick={() => {
-                            handleLogout();
-                            setIsMenuOpen(false);
-                          }}
-                          className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-white text-red-600 hover:bg-red-50 border border-red-200 rounded-md font-medium transition-all duration-200"
-                          variants={itemVariants}
-                          whileTap="tap"
-                        >
-                          <LogOut className="w-4 h-4" />
+                          <LogOut size={20} />
                           <span>Logout</span>
-                        </motion.button>
-                      </>
-                    ) : (
-                      <motion.button
-                        onClick={() => {
-                          openLogin();
-                          setIsMenuOpen(false);
-                        }}
-                        className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-md font-medium shadow-sm"
-                        variants={itemVariants}
-                        whileTap="tap"
-                      >
-                        <LogIn className="w-4 h-4" />
-                        <span>Login</span>
-                      </motion.button>
-                    )}
-                  </div>
+                        </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        openLogin();
+                        toggleMenu();
+                      }}
+                      className="w-full flex items-center justify-center space-x-2 px-5 py-4 bg-white text-black font-medium rounded-2xl active:scale-95 transition-all cursor-pointer"
+                    >
+                      <LogIn size={20} />
+                      <span>Login</span>
+                    </button>
+                  )}
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </nav>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.nav>
 
       {/* Toast Notification */}
       <AnimatePresence>
         {toast.show && (
           <motion.div
-            className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50"
+            className="fixed top-24 left-1/2 transform -translate-x-1/2 z-[60]"
             initial={{ opacity: 0, y: -20, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -20, scale: 0.9 }}
-            transition={{
-              type: "spring",
-              stiffness: 300,
-              damping: 25,
-            }}
           >
             <div
-              className={`flex items-center space-x-3 px-6 py-3 rounded-md shadow-lg border ${
+              className={`flex items-center space-x-3 px-6 py-3 rounded-full shadow-2xl backdrop-blur-xl border ${
                 toast.type === "success"
-                  ? "bg-green-50 border-green-200 text-green-800"
-                  : "bg-red-50 border-red-200 text-red-800"
+                  ? "bg-black/80 border-green-500/50 text-green-400"
+                  : "bg-black/80 border-red-500/50 text-red-400"
               }`}
             >
-              {toast.type === "success" ? (
-                <CheckCircle className="w-5 h-5" />
-              ) : (
-                <XCircle className="w-5 h-5" />
-              )}
-              <span className="font-medium">{toast.message}</span>
+              {toast.type === "success" ? <CheckCircle size={20} /> : <XCircle size={20} />}
+              <span className="font-medium text-sm">{toast.message}</span>
             </div>
           </motion.div>
         )}

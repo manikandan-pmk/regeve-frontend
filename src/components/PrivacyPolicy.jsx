@@ -1,128 +1,156 @@
-import React from "react";
-import { Shield, Lock, Eye, User, Database, Globe, Mail, Clock } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { 
+  Shield, Lock, Eye, User, Database, Globe, 
+  Clock, CheckCircle2, ChevronRight, Scale
+} from "lucide-react";
 
 const PrivacyPolicy = () => {
+  const [activeSection, setActiveSection] = useState("");
+
   const sections = [
     {
-      icon: <Database className="w-6 h-6" />,
+      id: "collection",
+      icon: <Database className="w-5 h-5" />,
       title: "Information We Collect",
-      content: "We collect information that you provide directly to us, including name, email address, phone number, and event registration details. We also automatically collect certain information about your device and usage of our services through cookies and similar technologies."
+      content: "We collect information that you provide directly to us, including name, email address, phone number, and event registration details. We also automatically collect certain information about your device and usage through cookies."
     },
     {
-      icon: <Globe className="w-6 h-6" />,
+      id: "usage",
+      icon: <Globe className="w-5 h-5" />,
       title: "How We Use Your Information",
-      content: "We use the information we collect to provide and maintain our services, process your transactions, send you technical notices and support messages, communicate with you about products and services, and improve our platform. Your data helps us personalize your experience and ensure event security."
+      content: "We use your data to maintain our services, process transactions, and personalize your experience. Your data helps us ensure event security and provide technical support."
     },
     {
-      icon: <User className="w-6 h-6" />,
+      id: "sharing",
+      icon: <User className="w-5 h-5" />,
       title: "Information Sharing",
-      content: "We do not sell your personal information. We may share your information with trusted third-party service providers who assist us in operating our platform, conducting our business, or servicing you. We may also disclose information when required by law or to protect our rights and safety."
+      content: "We do not sell your personal information. We only share data with trusted partners who assist in our operations or when required by law to protect our rights and safety."
     },
     {
-      icon: <Lock className="w-6 h-6" />,
+      id: "security",
+      icon: <Lock className="w-5 h-5" />,
       title: "Data Security",
-      content: "We implement appropriate technical and organizational security measures to protect your personal information against unauthorized access, alteration, disclosure, or destruction. This includes encryption, access controls, and regular security assessments. However, no method of transmission over the Internet is 100% secure."
+      content: "We implement bank-grade encryption and organizational security measures to protect your data. While we strive for 100% security, no internet transmission is entirely foolproof."
     },
     {
-      icon: <Eye className="w-6 h-6" />,
+      id: "rights",
+      icon: <Eye className="w-5 h-5" />,
       title: "Your Rights",
-      content: "You have the right to access, correct, or delete your personal information. You can also object to or restrict certain processing of your data. To exercise these rights, please contact us. We will respond to your request within 30 days."
-    },
-    {
-      icon: <Clock className="w-6 h-6" />,
-      title: "Data Retention",
-      content: "We retain your personal information for as long as necessary to fulfill the purposes outlined in this policy, unless a longer retention period is required or permitted by law. Event data is typically retained for 3 years after the event conclusion for analytical and legal purposes."
+      content: "You have the right to access, correct, or delete your data. We respect your privacy choices and will respond to any data requests within 30 days."
     }
   ];
 
   const updates = [
-    {
-      date: "January 15, 2024",
-      changes: "Updated data retention policies and added new user rights sections"
-    },
-    {
-      date: "August 3, 2023",
-      changes: "Enhanced security measures description and third-party sharing details"
-    },
-    {
-      date: "March 12, 2023",
-      changes: "Initial privacy policy publication"
-    }
+    { date: "Dec 15, 2024", changes: "Current Version - General updates" },
+    { date: "Jan 15, 2024", changes: "Updated data retention policies" },
+    { date: "Aug 03, 2023", changes: "Enhanced security descriptions" }
   ];
 
   return (
-    <div className="min-h-screen pt-24 bg-gradient-to-br from-slate-50 to-slate-100 py-8">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        
-        {/* Header */}
-        <div className="text-center mb-12">
-          <div className="w-20 h-20 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
-            <Shield className="w-10 h-10 text-blue-600" />
+    <div className="min-h-screen bg-slate-50 pt-20 pb-20">
+      {/* Hero Header */}
+      <div className="bg-white border-b border-slate-200 mb-12">
+        <div className="max-w-6xl mx-auto px-6 py-16 text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-sm font-medium mb-6">
+            <Shield className="w-4 h-4" />
+            <span>Updated Dec 15, 2024</span>
           </div>
-          <h1 className="text-4xl font-bold text-slate-800 mb-4">
+          <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 mb-4 tracking-tight">
             Privacy Policy
           </h1>
-          <p className="text-xl text-slate-600">
-            Last updated: December 15, 2024
+          <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+            Your privacy is our priority. We’re committed to being transparent about how we handle your data and keep it safe.
           </p>
         </div>
+      </div>
 
-        {/* Introduction */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 mb-8">
-          <p className="text-lg text-slate-700 leading-relaxed text-center">
-            At Event Management Solutions, we take your privacy seriously. This Privacy Policy explains 
-            how we collect, use, disclose, and safeguard your information when you use our event 
-            registration and management platform.
-          </p>
-        </div>
+      <div className="max-w-6xl mx-auto px-6">
+        <div className="flex flex-col lg:flex-row gap-12">
+          
+          {/* Sticky Sidebar Navigation */}
+          <aside className="lg:w-64 flex-shrink-0">
+            <div className="sticky top-28 space-y-1">
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 px-3">Sections</p>
+              {sections.map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => document.getElementById(s.id)?.scrollIntoView({ behavior: 'smooth' })}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm transition-all text-sm font-medium group"
+                >
+                  <span className="text-slate-400 group-hover:text-blue-600">{s.icon}</span>
+                  {s.title}
+                </button>
+              ))}
+              <div className="mt-8 p-4 bg-blue-600 rounded-2xl text-white">
+                <Scale className="w-6 h-6 mb-3 opacity-80" />
+                <p className="text-sm font-semibold mb-1">GDPR Compliant</p>
+                <p className="text-xs opacity-80 leading-relaxed">We adhere to the highest global data standards.</p>
+              </div>
+            </div>
+          </aside>
 
-        {/* Main Content Sections */}
-        <div className="space-y-6 mb-12">
-          {sections.map((section, index) => (
-            <div key={index} className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
-              <div className="flex items-start gap-4 mb-4">
-                <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600 flex-shrink-0">
-                  {section.icon}
+          {/* Main Content */}
+          <main className="flex-1 space-y-8">
+            {/* Quick Summary Card */}
+            <div className="bg-white rounded-2xl p-8 border border-slate-200 shadow-sm">
+              <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                At a Glance
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="flex gap-3">
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-2 shrink-0" />
+                  <p className="text-sm text-slate-600">We <strong>never</strong> sell your personal data to third parties.</p>
                 </div>
-                <div className="flex-1">
-                  <h2 className="text-2xl font-bold text-slate-800 mb-4">
-                    {section.title}
-                  </h2>
-                  <p className="text-slate-700 leading-relaxed">
-                    {section.content}
-                  </p>
+                <div className="flex gap-3">
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-2 shrink-0" />
+                  <p className="text-sm text-slate-600">You have full control over your data deletion at any time.</p>
                 </div>
               </div>
             </div>
-          ))}
-        </div>
 
-        {/* Cookies Section */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 mb-8">
-          <h2 className="text-2xl font-bold text-slate-800 mb-4">Cookies & Tracking</h2>
-          <p className="text-slate-700 leading-relaxed mb-4">
-            We use cookies and similar tracking technologies to track activity on our platform and 
-            hold certain information. Cookies are files with a small amount of data which may include 
-            an anonymous unique identifier. You can instruct your browser to refuse all cookies or to 
-            indicate when a cookie is being sent.
-          </p>
-          <div className="grid md:grid-cols-2 gap-4 mt-6">
-            <div className="p-4 bg-slate-50 rounded-lg">
-              <h3 className="font-semibold text-slate-800 mb-2">Essential Cookies</h3>
-              <p className="text-slate-600 text-sm">Required for basic platform functionality</p>
+            {/* Policy Sections */}
+            {sections.map((section) => (
+              <section 
+                id={section.id} 
+                key={section.id} 
+                className="bg-white rounded-2xl p-8 border border-slate-200 shadow-sm hover:shadow-md transition-shadow"
+              >
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-blue-600">
+                    {section.icon}
+                  </div>
+                  <h2 className="text-2xl font-bold text-slate-800">{section.title}</h2>
+                </div>
+                <p className="text-slate-600 leading-relaxed text-lg">
+                  {section.content}
+                </p>
+              </section>
+            ))}
+
+            {/* Revision History Timeline */}
+            <div className="pt-12">
+              <h2 className="text-2xl font-bold text-slate-900 mb-8 flex items-center gap-2">
+                <Clock className="w-6 h-6 text-slate-400" />
+                Revision History
+              </h2>
+              <div className="space-y-0 relative before:absolute before:inset-0 before:ml-5 before:h-full before:w-0.5 before:bg-slate-200">
+                {updates.map((update, idx) => (
+                  <div key={idx} className="relative pl-12 pb-8 group">
+                    <div className="absolute left-0 top-1 w-10 h-10 bg-white border-2 border-slate-200 rounded-full flex items-center justify-center group-hover:border-blue-500 transition-colors">
+                      <div className="w-2 h-2 bg-slate-300 rounded-full group-hover:bg-blue-500" />
+                    </div>
+                    <div>
+                      <span className="text-sm font-bold text-blue-600 tracking-tight">{update.date}</span>
+                      <p className="text-slate-600 mt-1">{update.changes}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-            <div className="p-4 bg-slate-50 rounded-lg">
-              <h3 className="font-semibold text-slate-800 mb-2">Analytics Cookies</h3>
-              <p className="text-slate-600 text-sm">Help us improve user experience</p>
-            </div>
-          </div>
+          </main>
+
         </div>
-
-        {/* Policy Updates */}
-         
-
-        
-
       </div>
     </div>
   );

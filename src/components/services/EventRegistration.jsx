@@ -1,4 +1,3 @@
-// components/ServicesWebsite.jsx
 import React, { useState, useEffect, useRef } from "react";
 import {
   QrCode,
@@ -10,14 +9,15 @@ import {
   Smartphone,
   BarChart,
   Download,
-  Cloud,
+  Play,
   Zap,
-  Calendar,
-  ChevronDown,
-  Sparkles,
+  Globe,
+  Layers,
+  Award
 } from "lucide-react";
 
 const EventRegistration = () => {
+  // --- Counter Logic (Same as before) ---
   const [counters, setCounters] = useState({
     events: 0,
     attendees: 0,
@@ -38,273 +38,263 @@ const EventRegistration = () => {
       },
       { threshold: 0.5 }
     );
-
-    if (counterRef.current) {
-      observer.observe(counterRef.current);
-    }
-
+    if (counterRef.current) observer.observe(counterRef.current);
     return () => observer.disconnect();
   }, []);
 
   useEffect(() => {
     if (!isVisible) return;
-
     const targetValues = {
       events: 500,
       attendees: 50000,
       uptime: 99.9,
       support: 24,
     };
-
-    const duration = 2000; // 2 seconds
-    const steps = 60;
-    const stepDuration = duration / steps;
-
+    const duration = 2000;
     const startAnimation = () => {
       const startTime = Date.now();
-
       const animate = () => {
         const elapsed = Date.now() - startTime;
         const progress = Math.min(elapsed / duration, 1);
-
-        // Easing function for smooth animation
         const easeOutQuart = 1 - Math.pow(1 - progress, 4);
-
         setCounters({
           events: Math.floor(targetValues.events * easeOutQuart),
           attendees: Math.floor(targetValues.attendees * easeOutQuart),
           uptime: parseFloat((targetValues.uptime * easeOutQuart).toFixed(1)),
           support: Math.floor(targetValues.support * easeOutQuart),
         });
-
-        if (progress < 1) {
-          requestAnimationFrame(animate);
-        }
+        if (progress < 1) requestAnimationFrame(animate);
       };
-
       requestAnimationFrame(animate);
     };
-
     startAnimation();
   }, [isVisible]);
 
   const features = [
-    {
-      icon: <QrCode className="w-6 h-6" />,
-      title: "QR Code Registration",
-      description:
-        "Generate unique QR codes for each attendee for instant check-ins",
-    },
-    {
-      icon: <CheckCircle className="w-6 h-6" />,
-      title: "Real-time Validation",
-      description:
-        "Validate attendee credentials instantly at the registration desk",
-    },
-    {
-      icon: <Shield className="w-6 h-6" />,
-      title: "Secure Access Control",
-      description: "Prevent unauthorized access with encrypted QR codes",
-    },
-    {
-      icon: <Clock className="w-6 h-6" />,
-      title: "Quick Check-in Process",
-      description: "Reduce waiting time with 5-second check-in process",
-    },
-    {
-      icon: <Users className="w-6 h-6" />,
-      title: "Bulk Registration",
-      description: "Register multiple attendees simultaneously with CSV upload",
-    },
-    {
-      icon: <Smartphone className="w-6 h-6" />,
-      title: "Mobile-Friendly",
-      description: "Access registration system from any smartphone or tablet",
-    },
-    {
-      icon: <BarChart className="w-6 h-6" />,
-      title: "Live Analytics",
-      description:
-        "Track registrations, check-ins, and attendance in real-time",
-    },
-    {
-      icon: <Download className="w-6 h-6" />,
-      title: "Export Data",
-      description:
-        "Download attendee lists, reports, and analytics in multiple formats",
-    },
+    { icon: <QrCode />, title: "Lightning Fast Check-in", description: "Scan 50+ attendees per minute with our optimized scanner. No hardware needed." },
+    { icon: <CheckCircle />, title: "Live Data Sync", description: "Multi-device synchronization instantly prevents duplicate entries and fraud." },
+    { icon: <Shield />, title: "Bank-Grade Security", description: "AES-256 encryption ensures your attendee data is safer than a vault." },
+    { icon: <Clock />, title: "Zero Downtime", description: "Engineered for 99.99% uptime, even during massive traffic spikes." },
+    { icon: <Users />, title: "Bulk Operations", description: "Import 10,000+ guest lists via CSV or API in seconds." },
+    { icon: <Smartphone />, title: "iOS & Android Ready", description: "Native apps for your staff to manage entry from any device." },
+    { icon: <BarChart />, title: "Granular Analytics", description: "Track peak hours, drop-off rates, and attendee demographics live." },
+    { icon: <Download />, title: "Instant Reporting", description: "Generate PDF/Excel reports for stakeholders with one click." },
   ];
 
   const howItWorks = [
-    {
-      step: "01",
-      title: "Create Event",
-      description:
-        "Set up your event details, dates, and registration form in minutes",
-      icon: <Calendar className="w-8 h-8" />,
-      bgColor: "bg-blue-100",
-      textColor: "text-blue-600",
-    },
-    {
-      step: "02",
-      title: "Generate QR Codes",
-      description:
-        "System automatically creates unique QR codes for each registrant",
-      icon: <QrCode className="w-8 h-8" />,
-      bgColor: "bg-emerald-100",
-      textColor: "text-emerald-600",
-    },
-    {
-      step: "03",
-      title: "Share Registration Link",
-      description:
-        "Distribute registration link via email, social media, or website",
-      icon: <Users className="w-8 h-8" />,
-      bgColor: "bg-violet-100",
-      textColor: "text-violet-600",
-    },
-    {
-      step: "04",
-      title: "Check-in Attendees",
-      description: "Scan QR codes at venue for instant check-in and validation",
-      icon: <CheckCircle className="w-8 h-8" />,
-      bgColor: "bg-amber-100",
-      textColor: "text-amber-600",
-    },
+    { step: "01", title: "Configure", desc: "Set up tickets, sessions, and branding in our drag-and-drop builder.", color: "bg-indigo-600" },
+    { step: "02", title: "Distribute", desc: "Auto-send encrypted QR passes via Email, SMS, or WhatsApp.", color: "bg-violet-600" },
+    { step: "03", title: "Validate", desc: "Staff scan codes instantly using our app or dedicated scanners.", color: "bg-fuchsia-600" },
+    { step: "04", title: "Analyze", desc: "Get real-time insights on attendance and engagement.", color: "bg-pink-600" },
   ];
 
+  const brands = ["TechCrunch", "Spotify", "Uber Events", "TEDx", "WebSummit", "Cannes Lions"];
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30 pt-24 pb-12">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Hero Section */}
-        <div className="text-center mb-16 animate-fadeIn">
-          <div className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-3 rounded-full text-sm font-medium mb-8 shadow-lg shadow-blue-500/20">
-            <Sparkles className="w-4 h-4" />
-            <span>Most Popular Event Registration Solution</span>
-          </div>
-          <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-4 leading-tight">
-            QR-Powered Event
-            <span className="block bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">
-              Registration Made Easy
-            </span>
-          </h1>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-10">
-            Transform your event experience with our AI-powered QR registration
-            platform. From instant check-ins to detailed analytics, we've got
-            you covered.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <button className="group bg-gradient-to-r from-blue-600 to-blue-700 text-white px-10 py-4 rounded-xl font-semibold hover:shadow-xl hover:shadow-blue-500/30 hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center gap-3">
-              <span>Start Free Trial</span>
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </button>
-            <button className="group bg-white text-gray-700 border-2 border-gray-200 px-10 py-4 rounded-xl font-semibold hover:border-blue-300 hover:bg-blue-50 transition-all duration-300 flex items-center justify-center gap-3">
-              <span>Watch Demo</span>
-              <ChevronDown className="w-5 h-5 group-hover:translate-y-1 transition-transform" />
-            </button>
-          </div>
-        </div>
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 overflow-hidden selection:bg-indigo-500/30">
+      
+      {/* Decorative Grid */}
+      <div className="absolute inset-0 z-0 opacity-[0.4] pointer-events-none" 
+           style={{ backgroundImage: 'radial-gradient(#cbd5e1 1px, transparent 1px)', backgroundSize: '32px 32px' }}>
+      </div>
 
-        {/* Animated Stats Section */}
-        <div
-          ref={counterRef}
-          className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-20"
-        >
-          <div className="text-center p-8 bg-gradient-to-br from-white to-blue-50 rounded-2xl shadow-lg border border-blue-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-            <div className="text-4xl font-bold text-blue-600 mb-3">
-              {counters.events}+
+      <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-8 pt-20 lg:pt-32 pb-24">
+        
+        {/* --- Hero Section --- */}
+        <div className="flex flex-col lg:flex-row items-center gap-16 mb-20">
+          <div className="lg:w-1/2 text-center lg:text-left">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-indigo-100 shadow-sm mb-8 cursor-default hover:border-indigo-300 transition-colors">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+              </span>
+              <span className="text-sm font-semibold text-slate-600 tracking-wide uppercase">v2.0 is Live</span>
             </div>
-            <div className="text-gray-700 font-medium">Events Managed</div>
-          </div>
-          <div className="text-center p-8 bg-gradient-to-br from-white to-emerald-50 rounded-2xl shadow-lg border border-emerald-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-            <div className="text-4xl font-bold text-emerald-600 mb-3">
-              {counters.attendees.toLocaleString()}+
-            </div>
-            <div className="text-gray-700 font-medium">
-              Attendees Registered
-            </div>
-          </div>
-          <div className="text-center p-8 bg-gradient-to-br from-white to-violet-50 rounded-2xl shadow-lg border border-violet-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-            <div className="text-4xl font-bold text-violet-600 mb-3">
-              {counters.uptime}%
-            </div>
-            <div className="text-gray-700 font-medium">Uptime Reliability</div>
-          </div>
-          <div className="text-center p-8 bg-gradient-to-br from-white to-amber-50 rounded-2xl shadow-lg border border-amber-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-            <div className="text-4xl font-bold text-amber-600 mb-3">
-              {counters.support}/7
-            </div>
-            <div className="text-gray-700 font-medium">Customer Support</div>
-          </div>
-        </div>
-
-        {/* How It Works */}
-        <div className="mb-20">
-          <h2 className="text-4xl font-bold text-center text-gray-900 mb-4">
-            How It Works in{" "}
-            <span className="text-blue-600">4 Simple Steps</span>
-          </h2>
-          <p className="text-lg text-gray-600 text-center mb-12 max-w-2xl mx-auto">
-            Get your event registration up and running in minutes, not days
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {howItWorks.map((step, index) => (
-              <div key={index} className="group relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl blur opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
-                <div className="relative bg-white p-8 rounded-2xl shadow-lg border border-gray-100 hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 h-full">
-                  <div className="flex flex-col items-center text-center">
-                    <div
-                      className={`w-20 h-20 ${step.bgColor} ${step.textColor} rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300`}
-                    >
-                      {step.icon}
-                    </div>
-                    <div className="text-3xl font-bold text-gray-900 mb-2">
-                      {step.step}
-                    </div>
-                    <h3 className="text-xl font-semibold text-gray-900 mb-3">
-                      {step.title}
-                    </h3>
-                    <p className="text-gray-600 leading-relaxed">
-                      {step.description}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Features Grid */}
-        <div className="mb-20">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              Everything You Need for{" "}
-              <span className="text-blue-600">Seamless Registration</span>
-            </h2>
-            <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-              Packed with powerful features to make your event registration
-              effortless and efficient
+            
+            <h1 className="text-5xl lg:text-7xl font-bold tracking-tight text-slate-900 mb-6 leading-[1.1]">
+              The Operating System for <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600">
+                Modern Events.
+              </span>
+            </h1>
+            
+            <p className="text-lg text-slate-500 mb-10 leading-relaxed max-w-2xl mx-auto lg:mx-0">
+              Stop using spreadsheets and clunky scanners. Switch to the platform that powers the world's most innovative conferences and festivals.
             </p>
+            
+            {/* <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+              <button className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-semibold hover:bg-slate-800 transition-all hover:scale-105 shadow-xl shadow-slate-900/20 flex items-center justify-center gap-2 group cursor-pointer">
+                Start Free Trial
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </button>
+              <button className="px-8 py-4 bg-white text-slate-700 border border-slate-200 rounded-2xl font-semibold hover:bg-slate-50 hover:border-slate-300 transition-all flex items-center justify-center gap-2 cursor-pointer group">
+                <Play className="w-4 h-4 fill-slate-700 group-hover:text-indigo-600 group-hover:fill-indigo-600 transition-colors" />
+                See How It Works
+              </button>
+            </div> */}
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {features.map((feature, index) => (
-              <div
-                key={index}
-                className="group bg-white p-8 rounded-2xl shadow-lg border border-gray-100 hover:shadow-2xl hover:-translate-y-2 hover:border-blue-200 transition-all duration-300"
-              >
-                <div className="w-14 h-14 bg-gradient-to-br from-blue-100 to-blue-50 text-blue-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-                  {feature.icon}
+
+          {/* Hero Visual */}
+          <div className="lg:w-1/2 relative group cursor-default">
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-gradient-to-r from-indigo-500/20 to-fuchsia-500/20 rounded-full blur-3xl -z-10 group-hover:opacity-100 transition-opacity opacity-75"></div>
+            <div className="relative bg-white/60 backdrop-blur-xl border border-white/50 p-2 rounded-3xl shadow-2xl shadow-indigo-500/10 transform rotate-[-2deg] group-hover:rotate-0 transition-all duration-500 ease-out">
+               <div className="bg-slate-900 rounded-2xl p-6 aspect-[4/3] flex flex-col justify-between overflow-hidden relative">
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-600/30 rounded-full blur-[60px]"></div>
+                  {/* Mock UI Header */}
+                  <div className="flex justify-between items-center mb-8 relative z-10">
+                    <div className="flex gap-2">
+                      <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                      <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                      <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                    </div>
+                    <div className="flex items-center gap-2 px-3 py-1 bg-slate-800 rounded-full">
+                        <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></div>
+                        <span className="text-[10px] text-slate-300 font-mono">Live Sync</span>
+                    </div>
+                  </div>
+                  
+                  {/* Mock QR Content */}
+                  <div className="flex gap-6 items-center justify-center relative z-10">
+                    <div className="bg-white p-4 rounded-xl shadow-lg transform group-hover:scale-105 transition-transform duration-500">
+                      <QrCode className="w-24 h-24 text-slate-900" strokeWidth={1.5} />
+                    </div>
+                    <div className="space-y-3">
+                      <div className="h-2 w-32 bg-slate-700 rounded-full"></div>
+                      <div className="h-2 w-24 bg-slate-700 rounded-full"></div>
+                      <div className="flex gap-2 mt-2">
+                          <div className="h-8 w-20 bg-indigo-600 rounded-lg"></div>
+                          <div className="h-8 w-8 bg-slate-700 rounded-lg"></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Mock Footer */}
+                  <div className="mt-8 flex justify-between items-end relative z-10 border-t border-slate-800 pt-4">
+                     <div>
+                        <div className="text-slate-500 text-[10px] uppercase tracking-wider mb-1">Attendee</div>
+                        <div className="text-white text-sm font-bold">Alex Morgan</div>
+                     </div>
+                     <div className="text-green-400 text-xs font-mono flex items-center gap-1 bg-green-400/10 px-2 py-1 rounded">
+                        <CheckCircle className="w-3 h-3" /> Access Granted
+                     </div>
+                  </div>
+               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* --- Social Proof --- */}
+        <div className="mb-24 border-y border-slate-200/60 py-8">
+            <p className="text-center text-slate-400 text-sm font-semibold uppercase tracking-widest mb-6">Trusted by 500+ Industry Leaders</p>
+            <div className="flex flex-wrap justify-center gap-x-12 gap-y-8 opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
+                {brands.map((brand, i) => (
+                    <span key={i} className="text-xl font-bold text-slate-800 cursor-default hover:text-indigo-600 transition-colors">{brand}</span>
+                ))}
+            </div>
+        </div>
+
+        {/* --- Stats Section --- */}
+        <div ref={counterRef} className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-32">
+          {[
+            { label: "Events Powered", value: counters.events + "+", color: "text-indigo-600", icon: Layers },
+            { label: "Check-ins Processed", value: (counters.attendees / 1000).toFixed(0) + "k+", color: "text-violet-600", icon: Users },
+            { label: "Uptime Guaranteed", value: counters.uptime + "%", color: "text-fuchsia-600", icon: Zap },
+            { label: "Global Countries", value: counters.support + "+", color: "text-pink-600", icon: Globe },
+          ].map((stat, idx) => (
+            <div key={idx} className="group bg-white border border-slate-200 p-8 rounded-3xl text-center hover:shadow-xl hover:border-indigo-100 hover:-translate-y-1 transition-all duration-300 cursor-pointer">
+              <div className={`mx-auto w-12 h-12 mb-4 rounded-2xl flex items-center justify-center bg-slate-50 group-hover:bg-indigo-50 transition-colors`}>
+                  <stat.icon className={`w-6 h-6 ${stat.color}`} />
+              </div>
+              <div className={`text-4xl lg:text-5xl font-black mb-2 ${stat.color} tracking-tight`}>
+                {stat.value}
+              </div>
+              <div className="text-slate-500 font-bold text-xs uppercase tracking-wider">{stat.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* --- How It Works --- */}
+        <div className="mb-32">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl lg:text-4xl font-bold text-slate-900 mb-4">Workflow that makes sense.</h2>
+            <p className="text-slate-500 max-w-2xl mx-auto text-lg">We've removed the friction. Go from signup to scanning in minutes.</p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {howItWorks.map((item, i) => (
+              <div key={i} className="relative group cursor-pointer">
+                <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm hover:shadow-2xl hover:border-indigo-100 hover:-translate-y-2 transition-all duration-300 h-full relative overflow-hidden">
+                  {/* Color Blob */}
+                  <div className={`absolute -top-10 -right-10 w-32 h-32 ${item.color} opacity-10 rounded-full blur-2xl group-hover:opacity-20 transition-opacity duration-500`}></div>
+                  
+                  <div className={`text-6xl font-black text-slate-100 mb-6 group-hover:text-transparent group-hover:bg-clip-text group-hover:${item.color} transition-all duration-300`}>
+                    {item.step}
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-900 mb-3 group-hover:translate-x-1 transition-transform">{item.title}</h3>
+                  <p className="text-slate-500 leading-relaxed font-medium">{item.desc}</p>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                  {feature.title}
-                </h3>
-                <p className="text-gray-600 text-sm leading-relaxed">
-                  {feature.description}
-                </p>
               </div>
             ))}
           </div>
         </div>
+
+        {/* --- Features Grid (Bento Style) --- */}
+        <div>
+          <div className="text-center mb-16">
+             <div className="inline-block p-2 px-4 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 font-bold text-xs uppercase tracking-wider mb-4">
+                Feature Packed
+             </div>
+             <h2 className="text-3xl lg:text-5xl font-bold text-slate-900">Everything you need to scale.</h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {features.map((feature, idx) => (
+              <div 
+                key={idx} 
+                className={`
+                  group bg-white p-8 rounded-3xl border border-slate-200 shadow-sm hover:border-indigo-200 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer relative overflow-hidden
+                  ${idx === 0 || idx === 7 ? 'lg:col-span-2' : 'lg:col-span-1'}
+                `}
+              >
+                <div className="relative z-10">
+                    <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-700 mb-6 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300 shadow-inner group-hover:shadow-lg group-hover:scale-110">
+                    {React.cloneElement(feature.icon, { size: 24, strokeWidth: 2 })}
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-900 mb-2 group-hover:text-indigo-700 transition-colors">{feature.title}</h3>
+                    <p className="text-slate-500 text-sm leading-relaxed font-medium group-hover:text-slate-600">{feature.description}</p>
+                    
+                    {/* Hover Arrow */}
+                    <div className="mt-4 flex items-center gap-2 text-indigo-600 text-xs font-bold uppercase tracking-wider opacity-0 transform translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 delay-75">
+                        Learn more <ArrowRight className="w-3 h-3" />
+                    </div>
+                </div>
+                {/* Subtle Background pattern on hover */}
+                <div className="absolute inset-0 bg-gradient-to-br from-transparent to-indigo-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* --- Closing CTA --- */}
+        <div className="mt-32 relative rounded-[3rem] overflow-hidden bg-slate-900 text-white text-center px-6 py-20 lg:py-28 shadow-2xl">
+            {/* Background Effects */}
+            <div className="absolute top-0 left-0 w-full h-full opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-600 rounded-full blur-[120px] opacity-40 animate-pulse"></div>
+
+            <div className="relative z-10 max-w-3xl mx-auto">
+                <h2 className="text-4xl lg:text-6xl font-black tracking-tight mb-6">Ready to upgrade your events?</h2>
+                <p className="text-indigo-200 text-lg lg:text-xl mb-10 font-medium">Join 500+ organizers who have switched to the modern standard of event management.</p>
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                    <button className="px-10 py-5 bg-white text-slate-900 rounded-2xl font-bold text-lg hover:bg-indigo-50 transition-all hover:scale-105 shadow-xl cursor-pointer">
+                        Get Started Now
+                    </button>
+                    <button className="px-10 py-5 bg-transparent border border-slate-600 text-white rounded-2xl font-bold text-lg hover:bg-white/10 transition-all cursor-pointer">
+                        Talk to Sales
+                    </button>
+                </div>
+            </div>
+        </div>
+
       </div>
     </div>
   );

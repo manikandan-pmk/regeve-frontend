@@ -65,6 +65,7 @@ const NameModal = ({
     >
       <div className="absolute inset-0 bg-gray-900/50 backdrop-blur-sm transition-opacity duration-300" />
 
+      
       <div
         className="relative w-full max-w-md transform transition-all duration-300 scale-100"
         onClick={(e) => e.stopPropagation()}
@@ -1626,183 +1627,165 @@ export default function LuckyDrawHome() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {activeModule === "luckyDraw" && (
-        <button onClick={() => setActiveModule(null)}>← Back</button>
-      )}
+     
 
       {/* Header with Back Button */}
       {activeModule === "luckyDraw" && (
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-24 md:pt-24 md:pb-32">
-          <div className="text-center mx-auto">
-            {/* Header Section */}
-            <header className="mb-16 relative">
-               
-              <h1 className="text-4xl md:text-6xl font-extrabold text-slate-900 mb-8 tracking-tight">
-                Lucky Draw Manager
-              </h1>
-              <p className="text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed">
-                Create and manage exciting lucky draws with prizes, QR code
-                support, and real-time tracking for your events and campaigns.
-              </p>
-            </header>
+  <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-24 md:pt-16 md:pb-32">
+    
+    {/* 🔹 REFINED BACK BUTTON: Aligned with content */}
+    <div className="flex justify-start mb-8">
+      <button
+        onClick={() => setActiveModule(null)}
+        className="group flex items-center gap-2 text-slate-500 hover:text-blue-600 transition-all duration-200 font-semibold text-sm tracking-wide uppercase cursor-pointer"
+      >
+        <div className="p-1 rounded-full group-hover:bg-blue-50 transition-colors">
+          <svg
+            className="w-5 h-5 transform group-hover:-translate-x-1 transition-transform"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2.5"
+              d="M15 19l-7-7 7-7"
+            />
+          </svg>
+        </div>
+        Back to Center
+      </button>
+    </div>
 
-            {/* Action Buttons */}
-            {activeModule === "luckyDraw" && !authError && !loading && (
-              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                {/* Create Draw Button */}
-                <button
-                  onClick={() => setShowNameModal(true)}
-                  className="group bg-blue-600 text-white px-8 py-4 rounded-xl hover:bg-blue-700 transition-all duration-300 font-bold shadow-xl hover:shadow-2xl flex items-center gap-3 w-full sm:w-auto min-w-[240px] justify-center text-lg cursor-pointer"
-                  type="button"
-                >
-                  <svg
-                    className="w-5 h-5 group-hover:scale-110 transition-transform duration-300"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 4v16m8-8H4"
-                    />
-                  </svg>
-                  New Lucky Draw
-                </button>
-              </div>
-            )}
-          </div>
-        </section>
-      )}
-      {activeModule === null && (
-        <section className="max-w-4xl mx-auto px-6 pt-24 pb-32">
-          {/* 🔹 HEADER CONTENT */}
-          <div className="text-center mb-12">
-            <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight mb-4">
-              Event Command Center
-            </h1>
-            <p className="text-lg text-slate-500 max-w-2xl mx-auto font-medium">
-              Select an activity below to launch the control panel.
-            </p>
-          </div>
+    <div className="text-center mx-auto">
+      {/* Header Section */}
+      <header className="mb-16 relative">
+        <h1 className="text-4xl md:text-6xl font-extrabold text-slate-900 mb-6 tracking-tight">
+          Lucky Draw Manager
+        </h1>
+        <p className="text-xl text-slate-500 max-w-3xl mx-auto leading-relaxed font-medium">
+          Create and manage exciting lucky draws with prizes, QR code
+          support, and real-time tracking for your events and campaigns.
+        </p>
+      </header>
 
-          {/* 🔹 MODULE BUTTONS */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Option 1: Lucky Draw */}
-            <div
-              onClick={() => setActiveModule("luckyDraw")}
-              className="group relative flex items-center p-6 bg-white border-2 border-slate-100 rounded-2xl hover:border-blue-600 hover:shadow-2xl transition-all duration-300 cursor-pointer overflow-hidden"
+      {/* Action Buttons */}
+      {!authError && !loading && (
+        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+          <button
+            onClick={() => setShowNameModal(true)}
+            className="group bg-blue-600 text-white px-8 py-4 rounded-2xl hover:bg-blue-700 transition-all duration-300 font-bold shadow-xl hover:shadow-blue-200/50 flex items-center gap-3 w-full sm:w-auto min-w-[240px] justify-center text-lg cursor-pointer"
+            type="button"
+          >
+            <svg
+              className="w-6 h-6 group-hover:scale-110 transition-transform duration-300"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
             >
-              {/* Hover Glow Effect (Optional subtle background) */}
-              <div className="absolute inset-0 bg-blue-50 opacity-0 group-hover:opacity-10 transition-opacity duration-300" />
-
-              <div className="relative flex items-center w-full gap-6">
-                {/* Bold Icon Container */}
-                <div className="flex-shrink-0 flex items-center justify-center w-16 h-16 bg-blue-600 text-white rounded-xl shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
-                  {/* Dice Icon SVG */}
-                  <svg
-                    className="w-8 h-8"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5"
-                    />
-                  </svg>
-                </div>
-
-                {/* Text Content */}
-                <div className="flex-grow">
-                  <h3 className="text-xl font-extrabold text-slate-900 group-hover:text-blue-700 transition-colors">
-                    Lucky Draw
-                  </h3>
-                  <p className="text-sm font-semibold text-slate-400 group-hover:text-slate-500 mt-1">
-                    Randomize & select winners
-                  </p>
-                </div>
-
-                {/* Animated Arrow */}
-                <div className="flex-shrink-0 text-slate-300 group-hover:text-blue-600 transform group-hover:translate-x-2 transition-all duration-300">
-                  <svg
-                    className="w-8 h-8"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2.5"
-                      d="M13 7l5 5m0 0l-5 5m5-5H6"
-                    />
-                  </svg>
-                </div>
-              </div>
-            </div>
-
-            {/* Option 2: Live Bidding */}
-            <div
-              onClick={() => navigate(`/${adminId}/bidding-dashboard`)}
-              className="group relative flex items-center p-6 bg-white border-2 border-slate-100 rounded-2xl hover:border-blue-600 hover:shadow-2xl transition-all duration-300 cursor-pointer overflow-hidden"
-            >
-              {/* Hover Glow Effect */}
-              <div className="absolute inset-0 bg-blue-50 opacity-0 group-hover:opacity-10 transition-opacity duration-300" />
-
-              <div className="relative flex items-center w-full gap-6">
-                {/* Bold Icon Container */}
-                <div className="flex-shrink-0 flex items-center justify-center w-16 h-16 bg-blue-600 text-white rounded-xl shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
-                  {/* Gavel / Money Icon SVG */}
-                  <svg
-                    className="w-8 h-8"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                </div>
-
-                {/* Text Content */}
-                <div className="flex-grow">
-                  <h3 className="text-xl font-extrabold text-slate-900 group-hover:text-blue-700 transition-colors">
-                    Live Bidding
-                  </h3>
-                  <p className="text-sm font-semibold text-slate-400 group-hover:text-slate-500 mt-1">
-                    Monitor real-time auctions
-                  </p>
-                </div>
-
-                {/* Animated Arrow */}
-                <div className="flex-shrink-0 text-slate-300 group-hover:text-blue-600 transform group-hover:translate-x-2 transition-all duration-300">
-                  <svg
-                    className="w-8 h-8"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2.5"
-                      d="M13 7l5 5m0 0l-5 5m5-5H6"
-                    />
-                  </svg>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2.5}
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+            New Lucky Draw
+          </button>
+        </div>
       )}
+    </div>
+  </section>
+)}
+    {activeModule === null && (
+  <section className="max-w-4xl mx-auto px-6 pt-12 pb-32">
+    
+    {/* 🔹 BACK BUTTON: Positioned to align with the grid below */}
+    <div className="flex justify-start mb-6">
+      <button
+        onClick={() => navigate(`/${adminId}/admindashboard`)}
+        className="group flex items-center gap-2 cursor-pointer text-slate-500 hover:text-blue-600 transition-all duration-200"
+      >
+        <div className="p-1 rounded-full group-hover:bg-blue-50 transition-colors">
+          <svg
+            className="w-5 h-5 transform group-hover:-translate-x-1 transition-transform"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2.5"
+              d="M15 19l-7-7 7-7"
+            />
+          </svg>
+        </div>
+        <span className="text-sm font-bold tracking-wide uppercase">Back to Dashboard</span>
+      </button>
+    </div>
+
+    {/* 🔹 HEADER CONTENT */}
+    <div className="text-center mb-16">
+      <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight mb-4">
+        Event Command Center
+      </h1>
+      <p className="text-lg text-slate-500 max-w-2xl mx-auto font-medium">
+        Select an activity below to launch the control panel.
+      </p>
+    </div>
+
+    {/* 🔹 MODULE BUTTONS */}
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      {/* Option 1: Lucky Draw */}
+      <div
+        onClick={() => setActiveModule("luckyDraw")}
+        className="group relative flex items-center p-8 bg-white border border-slate-200 rounded-3xl hover:border-blue-500 hover:shadow-xl transition-all duration-300 cursor-pointer"
+      >
+        <div className="relative flex items-center w-full gap-6">
+          <div className="flex-shrink-0 flex items-center justify-center w-14 h-14 bg-blue-600 text-white rounded-2xl shadow-lg group-hover:scale-105 transition-transform duration-300">
+            <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
+            </svg>
+          </div>
+          <div className="flex-grow">
+            <h3 className="text-xl font-bold text-slate-900">Lucky Draw</h3>
+            <p className="text-sm text-slate-400 font-medium">Randomize & select winners</p>
+          </div>
+          <div className="text-slate-300 group-hover:text-blue-500 transform group-hover:translate-x-1 transition-all">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M9 5l7 7-7 7" />
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      {/* Option 2: Live Bidding */}
+      <div
+        onClick={() => navigate(`/${adminId}/bidding-dashboard`)}
+        className="group relative flex items-center p-8 bg-white border border-slate-200 rounded-3xl hover:border-blue-500 hover:shadow-xl transition-all duration-300 cursor-pointer"
+      >
+        <div className="relative flex items-center w-full gap-6">
+          <div className="flex-shrink-0 flex items-center justify-center w-14 h-14 bg-blue-600 text-white rounded-2xl shadow-lg group-hover:scale-105 transition-transform duration-300">
+            <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div className="flex-grow">
+            <h3 className="text-xl font-bold text-slate-900">Live Bidding</h3>
+            <p className="text-sm text-slate-400 font-medium">Monitor real-time auctions</p>
+          </div>
+          <div className="text-slate-300 group-hover:text-blue-500 transform group-hover:translate-x-1 transition-all">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M9 5l7 7-7 7" />
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+)}
 
       {/* My Lucky Draws Section */}
       {activeModule === "luckyDraw" && (

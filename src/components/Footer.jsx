@@ -9,6 +9,7 @@ import {
   Instagram,
   Linkedin,
   Heart,
+  ArrowRight,
 } from "lucide-react";
 import Logo from "../assets/Logo.png";
 import { useNavigate } from "react-router-dom";
@@ -48,195 +49,158 @@ const Footer = () => {
     },
   };
 
+  // Social links with specific brand colors for hover effects
   const socialLinks = [
-    {
-      name: "Facebook",
-      icon: Facebook,
-      href: "#",
-      gradient: "hover:from-blue-600 hover:to-cyan-600",
+    { 
+      name: "Facebook", 
+      icon: Facebook, 
+      href: "#", 
+      color: "hover:bg-[#1877F2] hover:border-[#1877F2]" 
     },
-    {
-      name: "Twitter",
-      icon: Twitter,
-      href: "#",
-      gradient: "hover:from-purple-600 hover:to-pink-600",
+    { 
+      name: "Twitter", 
+      icon: Twitter, 
+      href: "#", 
+      color: "hover:bg-[#1DA1F2] hover:border-[#1DA1F2]" 
     },
-    {
-      name: "Instagram",
-      icon: Instagram,
-      href: "#",
-      gradient: "hover:from-green-600 hover:to-emerald-600",
+    { 
+      name: "Instagram", 
+      icon: Instagram, 
+      href: "#", 
+      color: "hover:bg-gradient-to-r hover:from-[#833AB4] hover:via-[#FD1D1D] hover:to-[#F77737] hover:border-transparent" 
     },
-    {
-      name: "LinkedIn",
-      icon: Linkedin,
-      href: "#",
-      gradient: "hover:from-blue-600 hover:to-purple-600",
+    { 
+      name: "LinkedIn", 
+      icon: Linkedin, 
+      href: "#", 
+      color: "hover:bg-[#0A66C2] hover:border-[#0A66C2]" 
     },
   ];
 
   const contactInfo = [
-    {
-      icon: MapPin,
-      text: "Vadapalani, Chennai, Tamil Nadu 600026",
-      gradient: "hover:text-green-600",
-    },
-    {
-      icon: Phone,
-      text: "+91 98432 75075",
-      href: "tel: 98432 75075",
-      gradient: "hover:text-blue-600",
-    },
-    {
-      icon: Mail,
-      text: "regeveindia@gmail.com",
-      href: "mailto:regeveindia@gmail.com",
-      gradient: "hover:text-purple-600",
-    },
+    { icon: MapPin, text: "Vadapalani, Chennai, Tamil Nadu 600026", href: "#" },
+    { icon: Phone, text: "+91 98432 75075", href: "tel:9843275075" },
+    { icon: Mail, text: "regeveindia@gmail.com", href: "mailto:regeveindia@gmail.com" },
   ];
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-      },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-      transition: {
-        duration: 0.5,
-      },
-    },
-  };
-
-  const handleNavigation = (path) => {
-    navigate(path);
-  };
-
   return (
-    <footer className="bg-[#4A70A9] backdrop-blur-md border-t border-gray-200">
-      {/* Main Footer Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <motion.div
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-8 text-center lg:text-left"
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
-        >
-          {/* Brand Section - Takes 2 columns */}
-          <motion.div
-            variants={itemVariants}
-            className="lg:col-span-2 space-y-6"
-          >
-            <div
-              className="flex items-center justify-center lg:justify-start space-x-3 cursor-pointer"
+    <footer className="bg-black text-white font-sans border-t border-white/10 relative overflow-hidden">
+      
+      {/* Ambient Background Glow */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full max-w-4xl bg-white/5 blur-[120px] rounded-full pointer-events-none" />
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-20 relative z-10">
+        
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8">
+          
+          {/* --- Brand Column (4 Cols) --- */}
+          <div className="lg:col-span-4 space-y-8">
+            <div 
+              className="flex items-center space-x-3 cursor-pointer group"
               onClick={() => navigate("/")}
             >
-              <img src={Logo} alt="Regeve Logo" className="w-18 h-14 " />
-
-              <span className="text-2xl font-bold text-white bg-clip-text ">
-                REGEVE
-              </span>
+              <div className="relative w-14 h-14 flex items-center justify-center bg-white/5 rounded-2xl border border-white/10 group-hover:bg-white/10 transition-all duration-300 shadow-lg shadow-white/5">
+                 <img 
+                   src={Logo} 
+                   alt="Regeve Logo" 
+                   className="w-8 h-8 object-contain brightness-0 invert" 
+                 />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-2xl font-black text-white tracking-tighter leading-none">
+                  REGEVE
+                </span>
+                <span className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mt-1">
+                  Event Solutions
+                </span>
+              </div>
             </div>
-            <p className="text-white text-sm leading-relaxed max-w-md mx-auto lg:mx-0">
-              Creating unforgettable event experiences with seamless
-              registration, interactive lucky draws, and smart food management
-              solutions.
+            
+            <p className="text-gray-400 text-sm leading-relaxed max-w-sm">
+              Creating unforgettable event experiences with seamless registration, interactive lucky draws, and smart food management solutions.
             </p>
 
             {/* Contact Info */}
-            <div className="space-y-3">
+            <div className="space-y-4 pt-2">
               {contactInfo.map((item, index) => (
-                <motion.a
+                <a
                   key={index}
                   href={item.href}
-                  className={`flex items-start space-x-3 text-white transition-colors duration-200 text-sm group justify-center lg:justify-start ${item.gradient}`}
-                  whileHover={{ x: 5 }}
+                  className="flex items-start gap-4 group text-sm text-gray-400 hover:text-white transition-colors duration-300"
                 >
-                  <item.icon className="w-4 h-4 text-white mt-0.5 flex-shrink-0 group-hover:scale-110 transition-transform duration-200" />
-                  <span className="leading-tight">{item.text}</span>
-                </motion.a>
+                  <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center border border-white/10 group-hover:border-white/30 group-hover:bg-white/10 transition-all">
+                    <item.icon className="w-4 h-4 text-gray-400 group-hover:text-white transition-colors" />
+                  </div>
+                  <span className="mt-1.5">{item.text}</span>
+                </a>
               ))}
             </div>
-          </motion.div>
+          </div>
 
-          {/* Links Sections - Each takes 1 column */}
-          {Object.entries(footerLinks).map(([key, section], sectionIndex) => (
-            <motion.div
-              key={key}
-              variants={itemVariants}
-              className="lg:col-span-1"
-            >
-              <h4 className="font-semibold text-white mb-6 text-lg relative inline-block">
-                {section.title}
-                <div className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-purple-600 to-pink-600 group-hover:w-full transition-all duration-300"></div>
-              </h4>
-              <ul className="space-y-3">
-                {section.links.map((link, index) => (
-                  <li key={index}>
-                    <motion.button
-                      onClick={() => handleNavigation(link.path)}
-                      className="text-gray-300 hover:text-black transition-colors duration-200 text-sm  cursor-pointer w-full text-start relative group"
-                      whileHover={{ x: 5 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      <span>{link.name}</span>
-                    </motion.button>
-                  </li>
-                ))}
-              </ul>
-            </motion.div>
-          ))}
-        </motion.div>
+          {/* --- Links Columns (8 Cols) --- */}
+          <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-3 gap-10 lg:gap-4 lg:pl-12">
+            {Object.entries(footerLinks).map(([key, section]) => (
+              <div key={key}>
+                <h4 className="text-white font-bold text-lg mb-6 capitalize flex items-center gap-2">
+                  {section.title}
+                </h4>
+                <ul className="space-y-2">
+                  {section.links.map((link, index) => (
+                    <li key={index}>
+                      <button
+                        onClick={() => navigate(link.path)}
+                        className="group relative flex items-center text-sm text-gray-400 hover:text-white transition-colors duration-300 text-left w-full cursor-pointer py-1.5"
+                      >
+                        {/* Animated Arrow (Reveals on Hover) */}
+                        <span className="absolute left-0 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 ease-out">
+                           <ArrowRight className="w-3.5 h-3.5 text-white" />
+                        </span>
+                        
+                        {/* Link Text (Slides right on Hover) */}
+                        <span className="transform group-hover:translate-x-5 transition-transform duration-300 ease-out">
+                          {link.name}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
 
-        {/* Bottom Section */}
-        <motion.div
-          className="border-t border-gray-200 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center space-y-6 md:space-y-0"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          viewport={{ once: true }}
-        >
+        </div>
+
+        {/* --- Bottom Bar --- */}
+        <div className="border-t border-white/10 mt-20 pt-8 flex flex-col-reverse md:flex-row justify-between items-center gap-6">
+          
           {/* Copyright */}
-          <div className="text-gray-100 text-sm flex items-center justify-center md:justify-start">
-            © {currentYear} Regeve. Made with{" "}
-            <motion.div
-              whileHover={{ scale: 1.2 }}
-              transition={{ type: "spring", stiffness: 300 }}
+          <div className="text-gray-500 text-sm flex items-center gap-1">
+            <span>© {currentYear} Regeve. Made with</span>
+            <motion.div 
+              whileHover={{ scale: 1.2, color: "#ef4444" }} 
+              className="text-gray-400 cursor-default flex items-center"
             >
-              <Heart className="w-4 h-4 mx-1 text-red-500 fill-current" />
-            </motion.div>{" "}
-            for amazing event experiences.
-          </div>         
+              <Heart className="w-3.5 h-3.5 fill-current" />
+            </motion.div> 
+            <span>in India.</span>
+          </div>
 
-          {/* Social Links */}
-          <div className="flex space-x-3">
+          {/* Animated Social Icons */}
+          <div className="flex gap-4">
             {socialLinks.map((social, index) => (
               <motion.a
                 key={social.name}
                 href={social.href}
-                className={`w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center text-gray-600 transition-all duration-200 border border-gray-200 hover:shadow-lg hover:scale-110 ${social.gradient} hover:text-white`}
-                whileHover={{
-                  scale: 1.1,
-                  y: -2,
-                  background: `linear-gradient(135deg, var(--tw-gradient-from), var(--tw-gradient-to))`,
-                }}
+                whileHover={{ y: -4 }}
                 whileTap={{ scale: 0.95 }}
-                aria-label={social.name}
+                className={`w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-gray-400 hover:text-white transition-all duration-300 border border-white/10 ${social.color}`}
               >
                 <social.icon className="w-4 h-4" />
               </motion.a>
             ))}
           </div>
-        </motion.div>
+
+        </div>
       </div>
     </footer>
   );

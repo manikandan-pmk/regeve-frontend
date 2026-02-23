@@ -4,13 +4,13 @@ import {
   Mail,
   Phone,
   MapPin,
-  Calendar,
-  Clock,
   Send,
   User,
-  MessageCircle,
+  MessageSquare,
+  Building,
+  ArrowRight,
+  Calendar, // Added missing import
 } from "lucide-react";
-import Map from "../assets/india-map.png";
 import ContactBg from "../assets/ContactBg2.jpg";
 
 const ContactInfo = () => {
@@ -18,29 +18,11 @@ const ContactInfo = () => {
     fullName: "",
     email: "",
     phone: "",
-    product: "",
     venue: "",
     city: "",
     eventDate: "",
     message: "",
   });
-
-  const products = [
-    "Event Registration System",
-    "Food Counter Management",
-    "Lucky Draw System",
-  ];
-
-  const cities = [
-    "Bangalore",
-    "Mumbai",
-    "Delhi",
-    "Chennai",
-    "Hyderabad",
-    "Kolkata",
-    "Pune",
-    "Ahmedabad",
-  ];
 
   const handleChange = (e) => {
     setFormData({
@@ -52,13 +34,11 @@ const ContactInfo = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     console.log("Form submitted:", formData);
-    // Handle form submission here
     alert("Thank you for your inquiry! We will get back to you soon.");
     setFormData({
       fullName: "",
       email: "",
       phone: "",
-      product: "",
       venue: "",
       city: "",
       eventDate: "",
@@ -66,315 +46,258 @@ const ContactInfo = () => {
     });
   };
 
+  // Animation Variants
   const containerVariants = {
     hidden: { opacity: 0 },
-    visible: {
+    visible: { 
       opacity: 1,
-      transition: {
-        staggerChildren: 0.2,
-      },
-    },
+      transition: { staggerChildren: 0.1, delayChildren: 0.2 }
+    }
   };
 
   const itemVariants = {
-    hidden: { y: 30, opacity: 0 },
-    visible: {
+    hidden: { opacity: 0, y: 20 },
+    visible: { 
+      opacity: 1, 
       y: 0,
-      opacity: 1,
-      transition: {
-        duration: 0.6,
-        ease: "easeOut",
-      },
-    },
+      transition: { duration: 0.6, ease: "easeOut" }
+    }
   };
 
-  const formVariants = {
-    hidden: { x: 50, opacity: 0 },
-    visible: {
-      x: 0,
+  const inputVariants = {
+    hidden: { opacity: 0, x: 20 },
+    visible: (i) => ({
       opacity: 1,
-      transition: {
-        duration: 0.8,
-        ease: "easeOut",
-      },
-    },
+      x: 0,
+      transition: { delay: 0.3 + (i * 0.1), duration: 0.5 }
+    })
   };
 
   return (
-    <section id="contact" className="relative min-h-screen bg-gray-300">
-      {/* Background Image with Overlay */}
-      <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{
-          backgroundImage: `url(${ContactBg})`,
-        }}
-      />
-
-      {/* Gradient Overlay */}
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-[1px]"></div>
-
-      <div className="relative z-10 container mx-auto px-4 py-16">
-        <div className="grid lg:grid-cols-2 gap-12 items-center">
-          {/* Left Side - Contact Info & Image */}
-          <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            whileInView="visible"
+    <section id="contact" className="min-h-screen flex flex-col lg:flex-row bg-white font-sans">
+      
+      {/* --- LEFT PANEL: Visuals (40%) --- */}
+      <div className="lg:w-5/12 relative bg-slate-900 min-h-[400px] lg:min-h-screen overflow-hidden">
+        {/* Background Image */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center transition-transform duration-1000 hover:scale-105"
+          style={{ backgroundImage: `url(${ContactBg})` }}
+        />
+        {/* Classic Dark Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-b from-slate-900/40 via-slate-900/60 to-slate-900/90 mix-blend-multiply" />
+        
+        {/* Content Overlay */}
+        <div className="absolute inset-0 p-10 lg:p-16 flex flex-col justify-end text-white z-10">
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
-            className="text-white"
+            transition={{ duration: 0.8 }}
           >
-            {/* Header */}
-            <motion.div variants={itemVariants} className="mb-8">
-              <h1 className="text-5xl lg:text-6xl font-bold mb-4 leading-tight">
-                Get in{" "}
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-600">
-                  Touch
-                </span>
-              </h1>
-              <p className="text-2xl text-gray-300 mb-2">
-                Masters of Connection
-              </p>
-              <p className="text-xl text-blue-300 font-semibold">
-                Let's Work Together
-              </p>
-            </motion.div>
-
-            {/* Contact Information */}
-            <motion.div variants={itemVariants} className="space-y-6 mb-8">
-              <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center">
-                  <Mail className="w-6 h-6 text-white" />
+            <h3 className="font-serif text-3xl lg:text-4xl leading-tight mb-4 text-white/90">
+              "Great events are not just happening, they are created."
+            </h3>
+            <div className="h-1 w-20 bg-blue-500 mb-6"></div>
+            
+            <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-sm">
+                  <Phone className="w-5 h-5 text-blue-200" />
                 </div>
                 <div>
-                  <p className="text-gray-400 text-sm">Email</p>
-                  <a
-                    href="mailto:info@bilimbedigital.com"
-                    className="text-white text-lg font-semibold hover:text-blue-300 transition-colors"
-                  >
-                    regeveindia@gmail.com
-                  </a>
+                  <p className="text-xs text-blue-200 uppercase tracking-wider font-bold">Call Us</p>
+                  <p className="text-lg font-medium">+91 98432 75075</p>
                 </div>
               </div>
-
-              <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center">
-                  <Phone className="w-6 h-6 text-white" />
+              
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-sm">
+                  <Mail className="w-5 h-5 text-blue-200" />
                 </div>
                 <div>
-                  <p className="text-gray-400 text-sm">Phone</p>
-                  <div className="text-white text-lg font-semibold">
-                    <a
-                      href="tel:+919843275075"
-                      className="hover:text-green-300 transition-colors"
-                    >
-                      +91 98432 75075
-                    </a>
-                  </div>
+                  <p className="text-xs text-blue-200 uppercase tracking-wider font-bold">Email Us</p>
+                  <p className="text-lg font-medium">regeveindia@gmail.com</p>
                 </div>
               </div>
-            </motion.div>
+            </div>
+          </motion.div>
+        </div>
+      </div>
 
-            {/* Service Description */}
-
-            {/* Image Section - Replaced Map */}
-            <motion.div
-              variants={itemVariants}
-              className="relative rounded-2xl overflow-hidden"
-            >
-              <img
-                src={Map}
-                alt="Map"
-                className="w-full h-full object-contain object-center"
-              />
-            </motion.div>
+      {/* --- RIGHT PANEL: Form (60%) --- */}
+      <div className="lg:w-7/12 bg-white flex flex-col justify-center py-16 px-6 sm:px-12 lg:px-24">
+        
+        <motion.div 
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
+          className="max-w-2xl w-full mx-auto"
+        >
+          {/* Header */}
+          <motion.div variants={itemVariants} className="mb-12">
+            <span className="text-blue-600 font-bold tracking-widest text-xs uppercase mb-2 block">
+              Get in Touch
+            </span>
+            <h2 className="font-serif text-4xl lg:text-5xl text-slate-900 mb-4">
+              Ready to start planning?
+            </h2>
+            <p className="text-slate-500 text-lg">
+              Fill out the form below and our team will get back to you within 24 hours.
+            </p>
           </motion.div>
 
-          {/* Right Side - Contact Form */}
-          <motion.div
-            variants={formVariants}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            className="bg-white/50 opacity-30 rounded-2xl shadow-xl p-8 border border-white/40"
-          >
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">
-              Event Inquiry Form
-            </h2>
-            <p className="text-gray-600 mb-8">
-              Fill out the form below and we'll get back to you within 24 hours.
-            </p>
-
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Full Name */}
-              <div>
-                <label
-                  htmlFor="fullName"
-                  className="block text-sm font-semibold text-gray-700 mb-2"
-                >
-                  Full Name *
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-8">
+            
+            {/* Name & Email Row */}
+            <div className="grid md:grid-cols-2 gap-8">
+              <motion.div variants={inputVariants} custom={0} className="relative group">
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 group-focus-within:text-blue-600 transition-colors">
+                  Full Name
                 </label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <div className="flex items-center border-b border-slate-200 group-focus-within:border-blue-600 transition-colors pb-2">
+                  <User className="w-5 h-5 text-slate-400 mr-3" />
                   <input
                     type="text"
-                    id="fullName"
                     name="fullName"
                     value={formData.fullName}
                     onChange={handleChange}
+                    placeholder="John Doe"
+                    className="w-full bg-transparent outline-none text-slate-800 placeholder:text-slate-300 text-base"
                     required
-                    className="w-full pl-12 pr-4 py-3 border  bg-white rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
-                    placeholder="Enter your full name"
                   />
                 </div>
-              </div>
+              </motion.div>
 
-              {/* Email & Phone */}
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <label
-                    htmlFor="email"
-                    className="block text-sm font-semibold text-gray-700 mb-2"
-                  >
-                    Mail Id *
-                  </label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
-                      type="email"
-                      id="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      required
-                      className="w-full pl-12 pr-4 py-3 border bg-white  rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
-                      placeholder="your@email.com"
-                    />
-                  </div>
+              <motion.div variants={inputVariants} custom={1} className="relative group">
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 group-focus-within:text-blue-600 transition-colors">
+                  Email Address
+                </label>
+                <div className="flex items-center border-b border-slate-200 group-focus-within:border-blue-600 transition-colors pb-2">
+                  <Mail className="w-5 h-5 text-slate-400 mr-3" />
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    placeholder="john@example.com"
+                    className="w-full bg-transparent outline-none text-slate-800 placeholder:text-slate-300 text-base"
+                    required
+                  />
                 </div>
-                <div>
-                  <label
-                    htmlFor="phone"
-                    className="block text-sm font-semibold text-gray-700 mb-2"
-                  >
-                    Phone Number *
-                  </label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
-                      type="tel"
-                      id="phone"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleChange}
-                      required
-                      className="w-full pl-12 bg-white  pr-4 py-3 border  rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
-                      placeholder="+91 00000 00000"
-                    />
-                  </div>
-                </div>
-              </div>
+              </motion.div>
+            </div>
 
-              {/* Venue & City */}
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <label
-                    htmlFor="venue"
-                    className="block text-sm font-semibold text-gray-700 mb-2"
-                  >
-                    Event Venue
-                  </label>
+            {/* Phone & City Row */}
+            <div className="grid md:grid-cols-2 gap-8">
+              <motion.div variants={inputVariants} custom={2} className="relative group">
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 group-focus-within:text-blue-600 transition-colors">
+                  Phone Number
+                </label>
+                <div className="flex items-center border-b border-slate-200 group-focus-within:border-blue-600 transition-colors pb-2">
+                  <Phone className="w-5 h-5 text-slate-400 mr-3" />
+                  <input
+                    type="tel"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    placeholder="+91 98765 43210"
+                    className="w-full bg-transparent outline-none text-slate-800 placeholder:text-slate-300 text-base"
+                    required
+                  />
+                </div>
+              </motion.div>
+
+              <motion.div variants={inputVariants} custom={3} className="relative group">
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 group-focus-within:text-blue-600 transition-colors">
+                  City
+                </label>
+                <div className="flex items-center border-b border-slate-200 group-focus-within:border-blue-600 transition-colors pb-2">
+                  <MapPin className="w-5 h-5 text-slate-400 mr-3" />
                   <input
                     type="text"
-                    id="venue"
-                    name="venue"
-                    value={formData.venue}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 bg-white border  rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
-                    placeholder="Enter venue name"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="city"
-                    className="block text-sm font-semibold text-gray-700 mb-2"
-                  >
-                    Choose your city *
-                  </label>
-                  <input
-                    id="city"
                     name="city"
                     value={formData.city}
                     onChange={handleChange}
-                    placeholder="City Name"
+                    placeholder="Bangalore"
+                    className="w-full bg-transparent outline-none text-slate-800 placeholder:text-slate-300 text-base"
                     required
-                    className="w-full bg-white px-4 py-3 border  rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
                   />
                 </div>
-              </div>
+              </motion.div>
+            </div>
 
-              {/* Event Date */}
-              <div>
-                <label
-                  htmlFor="eventDate"
-                  className="block text-sm font-semibold text-gray-700 mb-2"
-                >
-                  Event Date & Time *
+            {/* Venue & Date Row */}
+            <div className="grid md:grid-cols-2 gap-8">
+              <motion.div variants={inputVariants} custom={4} className="relative group">
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 group-focus-within:text-blue-600 transition-colors">
+                  Venue (Optional)
                 </label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <div className="flex items-center border-b border-slate-200 group-focus-within:border-blue-600 transition-colors pb-2">
+                  <Building className="w-5 h-5 text-slate-400 mr-3" />
+                  <input
+                    type="text"
+                    name="venue"
+                    value={formData.venue}
+                    onChange={handleChange}
+                    placeholder="Hotel / Center"
+                    className="w-full bg-transparent outline-none text-slate-800 placeholder:text-slate-300 text-base"
+                  />
+                </div>
+              </motion.div>
+
+              <motion.div variants={inputVariants} custom={5} className="relative group">
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 group-focus-within:text-blue-600 transition-colors">
+                  Date
+                </label>
+                <div className="flex items-center border-b border-slate-200 group-focus-within:border-blue-600 transition-colors pb-2">
+                  <Calendar className="w-5 h-5 text-slate-400 mr-3" />
                   <input
                     type="datetime-local"
-                    id="eventDate"
                     name="eventDate"
                     value={formData.eventDate}
                     onChange={handleChange}
-                    required
                     min={new Date().toISOString().slice(0, 16)}
-                    className="w-full pl-12 bg-white pr-4 py-3 border  rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
-                  />
-                </div>
-                <p className="text-sm text-gray-500 mt-2 flex items-center">
-                  <Clock className="w-4 h-4 mr-1" />
-                  Note: Choose the event's date and time
-                </p>
-              </div>
-
-              {/* Message */}
-              <div>
-                <label
-                  htmlFor="message"
-                  className="block text-sm font-semibold text-gray-700 mb-2"
-                >
-                  Message *
-                </label>
-                <div className="relative">
-                  <MessageCircle className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-                  <textarea
-                    id="message"
-                    name="message"
-                    value={formData.message}
-                    onChange={handleChange}
+                    className="w-full bg-transparent outline-none text-slate-800 placeholder:text-slate-300 text-base"
                     required
-                    rows="4"
-                    className="w-full pl-12 pr-4 py-3 bg-white border  rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 resize-none"
-                    placeholder="Tell us about your event requirements..."
                   />
                 </div>
-              </div>
+              </motion.div>
+            </div>
 
-              {/* Submit Button */}
-              <motion.button
+            {/* Message Area */}
+            <motion.div variants={inputVariants} custom={6} className="relative group">
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 group-focus-within:text-blue-600 transition-colors">
+                Your Message
+              </label>
+              <div className="flex items-start border-b border-slate-200 group-focus-within:border-blue-600 transition-colors pb-2">
+                <MessageSquare className="w-5 h-5 text-slate-400 mr-3 mt-1" />
+                <textarea
+                  name="message"
+                  value={formData.message}
+                  onChange={handleChange}
+                  rows="3"
+                  placeholder="Tell us about your event requirements..."
+                  className="w-full bg-transparent outline-none text-slate-800 placeholder:text-slate-300 text-base resize-none"
+                  required
+                ></textarea>
+              </div>
+            </motion.div>
+
+            {/* Submit Button */}
+            <motion.div variants={inputVariants} custom={7} className="pt-6">
+              <button
                 type="submit"
-                className="w-full cursor-pointer bg-gradient-to-r from-blue-600 to-cyan-600 text-white hover:from-blue-700 hover:to-cyan-700 py-4 px-6 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-3"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+                className="group relative cursor-pointer inline-flex items-center justify-center px-8 py-4 font-bold text-white transition-all duration-200 bg-slate-900 font-lg rounded-none hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600 w-full md:w-auto"
               >
-                <Send className="w-5 h-5" />
-                Submit Inquiry
-              </motion.button>
-            </form>
-          </motion.div>
-        </div>
+                <span>Send Message</span>
+                <ArrowRight className="ml-3 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </button>
+            </motion.div>
+
+          </form>
+        </motion.div>
       </div>
     </section>
   );
