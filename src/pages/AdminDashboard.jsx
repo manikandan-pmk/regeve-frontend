@@ -596,99 +596,50 @@ export default function AdminDashboard() {
       `}</style>
 
       {/* Top Navigation */}
-      <motion.nav
-        initial={{ y: -100 }}
-        animate={{ y: 0 }}
-        transition={{ type: "spring", stiffness: 100 }}
-        className="bg-white/90 backdrop-blur-xl shadow-sm sticky top-0 z-50 border-b border-gray-200/50"
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center space-x-3">
-              <img
-                src={Logo}
-                alt="Regeve Logo"
-                className="h-16 w-auto object-contain"
-              />
-            </div>
+   <motion.nav
+  initial={{ y: -100 }}
+  animate={{ y: 0 }}
+  className="sticky top-4 z-50 px-4"
+>
+  <div className="max-w-7xl mx-auto bg-white/80 backdrop-blur-md border border-gray-200/50 shadow-lg rounded-2xl px-6 py-2">
+    <div className="flex justify-between items-center h-14">
+      {/* Logo Section */}
+      <div className="flex items-center">
+        <img src={Logo} alt="Logo" className="h-10 w-auto" />
+      </div>
 
-            <div className="flex items-center space-x-4">
-              {/* Search Bar removed as requested */}
-
-              {showUpgradeModal && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                  <motion.div
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl border"
-                  >
-                    <div className="text-center">
-                      <div className="w-20 h-20 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                        <RiVipDiamondLine className="w-10 h-10 text-white" />
-                      </div>
-
-                      <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                        Upgrade Required
-                      </h3>
-                      <p className="text-gray-600 mb-6">
-                        Access premium event management features.
-                      </p>
-
-                      <div className="space-y-3">
-                        <button className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold">
-                          Contact Support
-                        </button>
-
-                        <button
-                          onClick={() => setShowUpgradeModal(false)}
-                          className="w-full py-3 bg-gray-100 rounded-xl text-gray-700"
-                        >
-                          Maybe Later
-                        </button>
-                      </div>
-                    </div>
-                  </motion.div>
-                </div>
-              )}
-
-              {/* User Profile */}
-              <motion.div
-                whileHover={{ scale: 1.02 }}
-                className="flex items-center space-x-3 bg-gradient-to-r from-gray-50 to-white px-4 py-2 rounded-xl border border-gray-200 shadow-sm"
-              >
-                <div className="text-right">
-                  <p className="font-bold text-gray-900 text-sm">
-                    {adminData?.name || "Event Manager"}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {adminData?.subscription || "Professional"} Plan
-                  </p>
-                </div>
-                <div className="relative">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-lg">
-                    {adminData?.name?.charAt(0)?.toUpperCase() || "E"}
-                  </div>
-                  <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white shadow-sm"></div>
-                </div>
-              </motion.div>
-
-              {/* Logout Button */}
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={handleLogout}
-                className="px-4 py-2.5 cursor-pointer text-sm font-medium text-white bg-gradient-to-r from-red-500 to-rose-600 rounded-xl hover:shadow-lg transition-all duration-300 flex items-center space-x-2 shadow-sm"
-              >
-                <FiLogOut className="w-4 h-4" />
-                <span>Logout</span>
-              </motion.button>
-            </div>
-          </div>
+      {/* Right Side Actions */}
+      <div className="flex items-center space-x-6">
+        {/* Simplified User Info */}
+        <div className="hidden sm:flex flex-col items-end">
+          <span className="text-sm font-semibold text-gray-800">{adminData?.name || "Admin"}</span>
+          <span className="text-[10px] uppercase tracking-wider text-blue-600 font-bold">
+            {adminData?.subscription || "Pro"}
+          </span>
         </div>
-      </motion.nav>
+
+        {/* Avatar with Dropdown Trigger potential */}
+        <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center border border-gray-200 cursor-pointer overflow-hidden">
+           {/* If no image, show initial */}
+           <span className="text-gray-600 font-medium">
+             {adminData?.name?.charAt(0) || "A"}
+           </span>
+        </div>
+
+        <button 
+          onClick={handleLogout}
+          className="p-2 hover:bg-red-50 text-red-500 rounded-lg transition-colors"
+          title="Logout"
+        >
+          <FiLogOut className="w-5 h-5" />
+        </button>
+      </div>
+    </div>
+  </div>
+</motion.nav>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="max-w-7xl mt-5 mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Welcome Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}

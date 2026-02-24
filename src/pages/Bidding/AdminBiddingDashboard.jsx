@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { 
-  Calendar, Clock, DollarSign, TrendingDown, Users, Edit, Trash2, X, 
+  Calendar, Clock, DollarSign, TrendingDown, Check , Edit, LinkIcon , X, 
   Save, Loader, PlusCircle, AlertCircle, RefreshCw, LayoutDashboard,
   Layers, ChevronRight, CheckCircle2, History, Lock
 } from 'lucide-react';
@@ -111,7 +111,16 @@ const AdminBiddingDashboard = () => {
   const [rounds, setRounds] = useState([]);
   const [selectedRound, setSelectedRound] = useState(null);
   const [activeRoundLive, setActiveRoundLive] = useState(null);
-  
+  const [copied, setCopied] = useState(false);
+  const [biddingConfig, setBiddingConfig] = useState(null);
+
+  const handleCopyLink = () => {
+    const participantUrl = `${window.location.origin}/#/${adminId || "admin"}/participant-bidding/${documentId}`;
+    navigator.clipboard.writeText(participantUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   // Edit State
   const [isEditingRound, setIsEditingRound] = useState(false);
   const [editedRound, setEditedRound] = useState(null);
@@ -127,6 +136,25 @@ const AdminBiddingDashboard = () => {
   
   const [loading, setLoading] = useState(true);
   const [apiActionLoading, setApiActionLoading] = useState(false);
+
+  // Fetch Bidding Configuration
+  const fetchBiddingConfig = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/biddings/public/${documentId}`);
+      if (response.data?.data) {
+        setBiddingConfig(response.data.data);
+        // Set default values based on config
+        setNewRound(prev => ({
+          ...prev,
+          durationType: response.data.data.durationUnit || 'Weekly',
+          totalAmount: response.data.data.amount || '',
+          roundNumber: (rounds.length || 0) + 1
+        }));
+      }
+    } catch (err) {
+      console.error('Error fetching bidding config:', err);
+    }
+  };
 
   // Fetch Rounds Data
   const fetchRounds = async () => {
@@ -154,7 +182,6 @@ const AdminBiddingDashboard = () => {
 
         if (activeRound) {
           setActiveRoundLive(activeRound);
-          // If no round selected or documentId provided, select active round
           if (!selectedRound && !documentId) {
             setSelectedRound(activeRound);
           }
@@ -166,12 +193,10 @@ const AdminBiddingDashboard = () => {
           if (foundRound) {
             setSelectedRound(foundRound);
           } else if (dataList.length > 0) {
-            // Sort by startTime descending and take latest
             const sorted = [...dataList].sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
             setSelectedRound(sorted[0]);
           }
         } else if (dataList.length > 0 && !selectedRound) {
-          // Sort by startTime descending and take latest
           const sorted = [...dataList].sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
           setSelectedRound(sorted[0]);
         }
@@ -185,8 +210,23 @@ const AdminBiddingDashboard = () => {
   };
 
   useEffect(() => { 
-    fetchRounds(); 
+    fetchRounds();
+    if (documentId) {
+      fetchBiddingConfig();
+    }
   }, [documentId]);
+
+  // Update newRound when rounds change
+  useEffect(() => {
+    if (biddingConfig) {
+      setNewRound(prev => ({
+        ...prev,
+        durationType: biddingConfig.durationUnit || 'Weekly',
+        totalAmount: biddingConfig.amount || '',
+        roundNumber: rounds.length + 1
+      }));
+    }
+  }, [rounds, biddingConfig]);
 
   // Handle Edit Mode Toggle
   const handleEditRound = () => { 
@@ -223,6 +263,9 @@ const AdminBiddingDashboard = () => {
     try {
       const token = localStorage.getItem("jwt");
       
+      // Calculate playAmount based on totalAmount and Final_Ratio
+      const playAmount = calculateReducedAmount(newRound.totalAmount, newRound.Final_Ratio);
+      
       const roundData = {
         data: {
           durationType: newRound.durationType,
@@ -230,21 +273,30 @@ const AdminBiddingDashboard = () => {
           startTime: new Date(newRound.startTime).toISOString(),
           endTime: new Date(newRound.endTime).toISOString(),
           totalAmount: parseFloat(newRound.totalAmount),
-          Final_Ratio: parseFloat(newRound.Final_Ratio)
+          playAmount: playAmount,
+          Final_Ratio: parseFloat(newRound.Final_Ratio),
+          Round_Name: newRound.durationType === 'Weekly' 
+            ? `Week ${newRound.roundNumber}`
+            : `Month ${newRound.roundNumber}`,
+          roundStatus: 'Created'
         }
       };
       
-      await axios.post(`${API_URL}/bidding-rounds/create`, roundData, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await axios.post(
+        `${API_URL}/bidding-rounds/create/${documentId}`,
+        roundData,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
       
       setShowCreateRoundModal(false);
       setNewRound({
-        durationType: 'Weekly',
-        roundNumber: rounds.length + 1,
+        durationType: biddingConfig?.durationUnit || 'Weekly',
+        roundNumber: rounds.length + 2, // Next round number
         startTime: '',
         endTime: '',
-        totalAmount: '',
+        totalAmount: biddingConfig?.amount || '',
         Final_Ratio: 40
       });
       
@@ -265,6 +317,8 @@ const AdminBiddingDashboard = () => {
     try {
       const token = localStorage.getItem("jwt");
       
+      const playAmount = calculateReducedAmount(editedRound.totalAmount, editedRound.Final_Ratio);
+      
       const updatedData = {
         data: {
           durationType: editedRound.durationType,
@@ -272,7 +326,11 @@ const AdminBiddingDashboard = () => {
           startTime: new Date(editedRound.startTime).toISOString(),
           endTime: new Date(editedRound.endTime).toISOString(),
           totalAmount: parseFloat(editedRound.totalAmount),
+          playAmount: playAmount,
           Final_Ratio: parseFloat(editedRound.Final_Ratio),
+          Round_Name: editedRound.durationType === 'Weekly' 
+            ? `Week ${editedRound.roundNumber}`
+            : `Month ${editedRound.roundNumber}`,
           roundStatus: editedRound.roundStatus
         }
       };
@@ -287,7 +345,7 @@ const AdminBiddingDashboard = () => {
         Round_Name: editedRound.durationType === 'Weekly' 
           ? `Week ${editedRound.roundNumber}`
           : `Month ${editedRound.roundNumber}`,
-        playAmount: calculateReducedAmount(editedRound.totalAmount, editedRound.Final_Ratio),
+        playAmount: playAmount.toString(),
         Final_Ratio: editedRound.Final_Ratio,
         startTime: editedRound.startTime,
         endTime: editedRound.endTime
@@ -367,7 +425,17 @@ const AdminBiddingDashboard = () => {
               Rounds ({rounds.length})
             </p>
             <button 
-              onClick={() => setShowCreateRoundModal(true)}
+              onClick={() => {
+                setNewRound({
+                  durationType: biddingConfig?.durationUnit || 'Weekly',
+                  roundNumber: rounds.length + 1,
+                  startTime: '',
+                  endTime: '',
+                  totalAmount: biddingConfig?.amount || '',
+                  Final_Ratio: 40
+                });
+                setShowCreateRoundModal(true);
+              }}
               className="p-2 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-colors"
               title="Create New Round"
             >
@@ -421,35 +489,48 @@ const AdminBiddingDashboard = () => {
       {/* --- MAIN CONTENT --- */}
       <main className="flex-1 flex flex-col relative z-10 overflow-hidden">
         {/* Header */}
-        <header className="h-24 px-10 flex items-center justify-between bg-white/40 backdrop-blur-sm border-b border-slate-200/50 shrink-0">
+       <header className="h-24 px-10 flex items-center justify-between bg-white/40 backdrop-blur-sm border-b border-slate-200/50 shrink-0">
+      <div>
+        <h1 className="text-3xl font-black text-slate-800 tracking-tight">
+          {selectedRound?.Round_Name || 'Bidding'} Overview
+        </h1>
+        <p className="text-sm font-bold text-slate-500 mt-1">
+          {selectedRound ? `Viewing details for ${selectedRound.Round_Name}` : 'Live Bidding Session'}
+        </p>
+      </div>
+      <div className="flex items-center gap-6">
+        {/* Total Pool Amount */}
+        <div className="flex items-center gap-3 bg-white px-5 py-3 rounded-2xl border border-slate-100 shadow-sm">
+          <div className="bg-indigo-50 p-2 rounded-xl text-indigo-600">
+            <DollarSign size={18} />
+          </div>
           <div>
-             <h1 className="text-3xl font-black text-slate-800 tracking-tight">
-               {selectedRound?.Round_Name || 'Round'} Overview
-             </h1>
-             <p className="text-sm font-bold text-slate-500 mt-1">
-               {selectedRound ? `Viewing details for ${selectedRound.Round_Name}` : 'No round selected'}
-             </p>
+            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Pool Amount</p>
+            <p className="text-lg font-black leading-none">
+              ₹{selectedRound?.playAmount?.toLocaleString() || '0'}
+            </p>
           </div>
-          <div className="flex items-center gap-6">
-             <div className="flex items-center gap-3 bg-white px-5 py-3 rounded-2xl border border-slate-100 shadow-sm">
-                <div className="bg-indigo-50 p-2 rounded-xl text-indigo-600">
-                  <DollarSign size={18}/>
-                </div>
-                <div>
-                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Pool Amount</p>
-                  <p className="text-lg font-black leading-none">
-                    ₹{selectedRound?.playAmount?.toLocaleString() || '0'}
-                  </p>
-                </div>
-             </div>
-             <button 
-               onClick={fetchRounds} 
-               className="p-4 bg-white border border-slate-100 rounded-2xl text-slate-500 hover:text-indigo-600 hover:shadow-lg transition-all"
-             >
-               <RefreshCw size={20} />
-             </button>
-          </div>
-        </header>
+        </div>
+
+        {/* Copy Link Button */}
+        <button
+          onClick={handleCopyLink}
+          className="flex items-center gap-2 px-4 py-4 bg-white border border-slate-100 rounded-2xl text-slate-500 hover:text-indigo-600 hover:shadow-lg transition-all"
+          title="Copy Bidding Page Link"
+        >
+          {copied ? <Check size={20} className="text-green-500" /> : <LinkIcon size={20} />}
+          <span className="text-sm font-bold">{copied ? 'Copied!' : 'Bidding Page'}</span>
+        </button>
+
+        {/* Refresh Button */}
+        <button
+          onClick={fetchRounds}
+          className="p-4 bg-white border border-slate-100 rounded-2xl text-slate-500 hover:text-indigo-600 hover:shadow-lg transition-all"
+        >
+          <RefreshCw size={20} />
+        </button>
+      </div>
+    </header>
 
         {/* Scrollable Body */}
         <div className="flex-1 overflow-y-auto p-10">
@@ -669,7 +750,17 @@ const AdminBiddingDashboard = () => {
               <h2 className="text-xl font-black text-slate-700">No Rounds Found</h2>
               <p className="text-slate-500 mt-2 font-bold">Create your first bidding round</p>
               <button
-                onClick={() => setShowCreateRoundModal(true)}
+                onClick={() => {
+                  setNewRound({
+                    durationType: biddingConfig?.durationUnit || 'Weekly',
+                    roundNumber: 1,
+                    startTime: '',
+                    endTime: '',
+                    totalAmount: biddingConfig?.amount || '',
+                    Final_Ratio: 40
+                  });
+                  setShowCreateRoundModal(true);
+                }}
                 className="mt-4 px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all flex items-center gap-2"
               >
                 <PlusCircle size={18} />
@@ -678,7 +769,7 @@ const AdminBiddingDashboard = () => {
             </div>
           )}
 
-          {/* Bidding History (placeholder) */}
+          {/* Bidding History */}
           {selectedRound && (
             <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200 overflow-hidden">
               <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
@@ -762,6 +853,11 @@ const AdminBiddingDashboard = () => {
                     <option value="Weekly">Weekly</option>
                     <option value="Monthly">Monthly</option>
                   </select>
+                  {biddingConfig?.durationValue && (
+                    <p className="text-xs text-slate-500 mt-1 font-bold">
+                      Duration: {biddingConfig.durationValue} {biddingConfig.durationUnit}
+                    </p>
+                  )}
                 </div>
                 
                 <div>
@@ -816,6 +912,11 @@ const AdminBiddingDashboard = () => {
                     className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-indigo-500 outline-none font-bold text-slate-700"
                     min="0"
                   />
+                  {biddingConfig?.amount && (
+                    <p className="text-xs text-slate-500 mt-1 font-bold">
+                      Base Amount: ₹{parseInt(biddingConfig.amount).toLocaleString()}
+                    </p>
+                  )}
                 </div>
                 
                 <div>
@@ -840,6 +941,12 @@ const AdminBiddingDashboard = () => {
                 </p>
                 <p className="text-sm font-bold text-indigo-500 mt-2">
                   Final Payout: ₹{calculateReducedAmount(
+                    parseFloat(newRound.totalAmount) || 0, 
+                    parseFloat(newRound.Final_Ratio) || 0
+                  ).toLocaleString()}
+                </p>
+                <p className="text-sm font-bold text-indigo-500">
+                  Pool Amount: ₹{calculateReducedAmount(
                     parseFloat(newRound.totalAmount) || 0, 
                     parseFloat(newRound.Final_Ratio) || 0
                   ).toLocaleString()}
@@ -883,4 +990,4 @@ const AdminBiddingDashboard = () => {
   );
 };
 
-export default AdminBiddingDashboard;
+export default AdminBiddingDashboard;  n    

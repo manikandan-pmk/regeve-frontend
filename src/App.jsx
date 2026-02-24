@@ -48,10 +48,8 @@ import ParticipantDetailsPage from "./pages/LuckyDraw/ParticipantDetailsPage";
 import BiddingDashboard from "./pages/Bidding/BiddingDashboard";
 import BiddingForm from "./pages/Bidding/BiddingForm";
 import Participants from "./pages/Bidding/Participants";
-import BiddingRoom from "./pages/Bidding/BiddingRoom";
-import VerifyParticipant from "./pages/Bidding/VerifyParticipant";
-import AdminAuctionPage from "./pages/Bidding/AdminAuctionPage";
 import AdminBiddingDashboard from "./pages/Bidding/AdminBiddingDashboard";
+import ParticipantBiddingPage from "./pages/Bidding/ParticipantBiddingPage";
 
 export default function App() {
   const location = useLocation();
@@ -87,7 +85,8 @@ export default function App() {
     location.pathname.includes("/bidding/round/") ||
     location.pathname.includes("/participant-page/") ||
     location.pathname.includes("/admin-bidding-dashboard/") ||
-    location.pathname.includes("/bidding-auction");
+    location.pathname.includes("/bidding-auction") ||
+    location.pathname.includes("/participant-bidding") ;
 
   return (
     <div className="max-w-full overflow-x-hidden">
@@ -199,14 +198,12 @@ export default function App() {
           path="/:adminId/bidding-dashboard/:documentId/participants"
           element={<Participants />}
         />
-        <Route path="/bidding/round/:roundId" element={<BiddingRoom />} />
+
+        <Route path="/:adminId/participant-bidding/:documentId" element={<ParticipantBiddingPage />}/>
+       
+        
         <Route
-          path="/bidding/round/:roundId/verify"
-          element={<VerifyParticipant />}
-        />
-        <Route path="/bidding-auction" element={<AdminAuctionPage />} />
-        <Route
-          path="/:adminId/admin-bidding-dashboard/:biddingId"
+          path="/:adminId/admin-bidding-dashboard/:documentId"
           element={<AdminBiddingDashboard />}
         />
       </Routes>

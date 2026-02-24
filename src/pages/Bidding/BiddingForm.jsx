@@ -20,22 +20,21 @@ const BiddingForm = () => {
     gender: "Male",
   });
 
-  
   // 🔹 FETCH BIDDING DETAILS (For Dynamic Header)
   useEffect(() => {
-
     const fetchBiddingDetails = async () => {
       if (!documentId) return;
 
       try {
-        const response = await fetch(
-          `https://api.regeve.in/api/biddings/${documentId}`,
+        const response = await axios.get(
+          `https://api.regeve.in/api/biddings/public/${documentId}`,
         );
 
-        const result = await response.json();
+        const result = response.data;
+       
 
-        if (response.ok && result.data) {
-          setRealBiddingId(result.data.id); // ✅ Correct
+        if (result && result.data) {
+          setRealBiddingId(result.data.id);
           setBiddingName(
             result.data.attributes?.nameOfBid || "Registration Form",
           );
@@ -123,6 +122,7 @@ const BiddingForm = () => {
       );
 
       const result = response.data;
+      console.log("API Response:", result);
 
       // ✅ Success
       setMessage({
