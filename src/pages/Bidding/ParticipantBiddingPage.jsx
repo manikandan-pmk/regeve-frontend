@@ -78,27 +78,35 @@ const ParticipantBiddingPage = () => {
   };
 
   // Function to extract month from round name
-  const extractMonthFromRoundName = (roundName) => {
-    if (!roundName) return "Unknown";
+ const extractMonthFromRoundName = (roundName) => {
+  if (!roundName) return "Other Rounds";
 
-    const monthMatch = roundName.match(/month[_\s]*(\d+)/i);
-    if (monthMatch) {
-      return `Month ${monthMatch[1]}`;
+  // Match Month 1, Month_1, etc.
+  const monthMatch = roundName.match(/month[_\s]*(\d+)/i);
+  if (monthMatch) {
+    return `Month ${monthMatch[1]}`;
+  }
+
+  // Match Week 1, Week_1, etc.
+  const weekMatch = roundName.match(/week[_\s]*(\d+)/i);
+  if (weekMatch) {
+    return `Week ${weekMatch[1]}`;
+  }
+
+  // Match actual month names
+  const monthNames = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+  ];
+
+  for (const month of monthNames) {
+    if (roundName.toLowerCase().includes(month.toLowerCase())) {
+      return month;
     }
+  }
 
-    const monthNames = [
-      "January", "February", "March", "April", "May", "June",
-      "July", "August", "September", "October", "November", "December",
-    ];
-
-    for (const month of monthNames) {
-      if (roundName.toLowerCase().includes(month.toLowerCase())) {
-        return month;
-      }
-    }
-
-    return "Other Rounds";
-  };
+  return "Other Rounds";
+};
 
   useEffect(() => {
     if (authStatus !== "VERIFIED") return;
@@ -764,8 +772,8 @@ const ParticipantBiddingPage = () => {
             >
               {statusInfo.text}
             </span>
-            Session: {documentId?.slice(0, 8)}... • Admin:{" "}
-            {adminId?.slice(0, 8)}...
+           
+            
           </p>
         </div>
         <div className="flex items-center gap-3 bg-white px-3 py-2 rounded-xl shadow-sm border border-slate-200 w-full sm:w-auto">
@@ -787,7 +795,7 @@ const ParticipantBiddingPage = () => {
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
             <div className="flex items-center gap-2 mb-3">
               <Calendar size={18} className="text-indigo-600" />
-              <h3 className="font-bold text-slate-700">Select Month</h3>
+              <h3 className="font-bold text-slate-700">Select {biddingData?.durationUnit === "Weekly" ? "Week" : "Month"}</h3>
             </div>
 
             <div className="flex flex-wrap gap-2">

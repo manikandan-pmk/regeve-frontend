@@ -115,7 +115,7 @@ export default function BiddingDashboard() {
     .filter(
       (bid) =>
         bid.nameOfBid?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        bid.biddingid?.toLowerCase().includes(searchTerm.toLowerCase()),
+        bid.biddingid?.toLowerCase().includes(searchTerm.toLowerCase())
     )
     .sort((a, b) => {
       if (sortBy === "newest")
@@ -672,7 +672,6 @@ function BiddingCard({ data, index, onClick, onEdit, onDelete }) {
 
 function CreateOrEditBiddingModal({ onClose, onSuccess, existingData }) {
   const isEditMode = !!existingData?.documentId;
- 
 
   // State for Form
   const [formData, setFormData] = useState({
@@ -689,46 +688,44 @@ function CreateOrEditBiddingModal({ onClose, onSuccess, existingData }) {
   const handleChange = (e) =>
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  if (isSubmitting) return;
-  setIsSubmitting(true);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
 
-  try {
-    const token = localStorage.getItem("jwt");
+    try {
+      const token = localStorage.getItem("jwt");
 
-    const payload = {
-      data: {
-        nameOfBid: formData.nameOfBid.trim(),
-        amount: Number(formData.amount),
-        maxPeople: Number(formData.maxPeople),
-        durationValue: Number(formData.durationValue),
-        durationUnit: formData.durationUnit,
-      },
-    };
+      const payload = {
+        data: {
+          nameOfBid: formData.nameOfBid.trim(),
+          amount: Number(formData.amount),
+          maxPeople: Number(formData.maxPeople),
+          durationValue: Number(formData.durationValue),
+          durationUnit: formData.durationUnit,
+        },
+      };
 
-    const url = isEditMode
-      ? `${API_URL}/${existingData.documentId}`
-      : `${API_URL}/create`;
+      const url = isEditMode
+        ? `${API_URL}/${existingData.documentId}`
+        : `${API_URL}/create`;
 
-    const method = isEditMode ? "put" : "post";
+      const method = isEditMode ? "put" : "post";
 
-    await axios[method](url, payload, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-    });
+      await axios[method](url, payload, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
 
-    onSuccess();
-  } catch (error) {
-    console.error("EDIT ERROR:", error.response?.data || error.message);
-  } finally {
-    setIsSubmitting(false);
-  }
-};
-
-  
+      onSuccess();
+    } catch (error) {
+      console.error("EDIT ERROR:", error.response?.data || error.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300">
@@ -939,7 +936,9 @@ function SingleBiddingAdminPage({ bid, onBack, adminId, navigate }) {
     );
 
   // Logic for calculations
-  const winners = bid.biddingwinners || [];
+  const winners =
+    bid.bidding_participants?.filter((p) => p.is_winned_candidate === true) ||
+    [];
   const totalRounds = bid.durationValue || 0;
   const completedRounds = winners.length || 0;
   const participantCount = bid.maxPeople || 0;
@@ -970,7 +969,7 @@ function SingleBiddingAdminPage({ bid, onBack, adminId, navigate }) {
           <button
             onClick={() =>
               navigate(
-                `/${adminId}/bidding-dashboard/${bid.documentId}/participants`,
+                `/${adminId}/bidding-dashboard/${bid.documentId}/participants`
               )
             }
             className="cursor-pointer px-8 py-3 bg-slate-900 text-white rounded-2xl font-bold hover:bg-indigo-600 transition-all shadow-lg shadow-slate-200"
@@ -1021,32 +1020,36 @@ function SingleBiddingAdminPage({ bid, onBack, adminId, navigate }) {
         </div>
 
         {/* Card 2: Latest Winner */}
-        <div className="bg-white/80 backdrop-blur-md p-8 rounded-[2rem] border border-white shadow-xl shadow-slate-100/50 flex flex-col items-center justify-center text-center">
-          <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center text-xl mb-4 shadow-inner">
-            🏆
-          </div>
-          <h3 className="font-black text-slate-800 tracking-tight text-lg mb-4">
-            Latest Winner
-          </h3>
-          {winners.length > 0 ? (
-            <div>
-              <p className="text-2xl font-black text-slate-900 leading-tight">
-                {winners[winners.length - 1]?.name || "N/A"}
-              </p>
-              <span className="inline-block mt-2 px-3 py-1 bg-amber-100 text-amber-700 rounded-lg text-[10px] font-black uppercase">
-                Round {winners.length}
-              </span>
+        {/* Card 2: Winners Ratio */}
+        <div className="bg-white/80 backdrop-blur-md p-8 rounded-[2rem] border border-white shadow-xl shadow-slate-100/50 flex flex-col justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center text-xl shadow-inner">
+              🏆
             </div>
-          ) : (
-            <p className="text-slate-400 font-bold italic">No winner yet</p>
-          )}
+            <h3 className="font-black text-slate-800 tracking-tight text-lg">
+              Winners
+            </h3>
+          </div>
+          <div className="mt-8">
+            <div className="flex items-baseline gap-2">
+              <p className="text-5xl font-black text-slate-900 tracking-tighter">
+                {winners.length}
+              </p>
+              <p className="text-2xl font-bold text-slate-400">
+                / {participantCount}
+              </p>
+            </div>
+            <p className="text-amber-600 text-[10px] font-black uppercase tracking-widest mt-2">
+              Total Crowned
+            </p>
+          </div>
         </div>
 
         {/* Card 3: Participants */}
         <div
           onClick={() =>
             navigate(
-              `/${adminId}/bidding-dashboard/${bid.documentId}/participants`,
+              `/${adminId}/bidding-dashboard/${bid.documentId}/participants`
             )
           }
           className="group bg-white/80 backdrop-blur-md p-8 rounded-[2rem] border border-white shadow-xl shadow-slate-100/50 flex flex-col justify-between cursor-pointer hover:border-indigo-200 transition-all"
@@ -1068,6 +1071,121 @@ function SingleBiddingAdminPage({ bid, onBack, adminId, navigate }) {
             </p>
           </div>
         </div>
+      </div>
+
+      {/* Winners Section */}
+      {/* 3. Winners Section (Enhanced) */}
+      <div className="bg-white rounded-[2.5rem] p-8 md:p-10 shadow-sm border border-slate-100">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+          <div className="flex items-center gap-5">
+            <div className="w-14 h-14 bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl flex items-center justify-center text-2xl shadow-lg shadow-amber-200">
+              🏆
+            </div>
+            <div>
+              <h3 className="text-3xl font-black text-slate-900 tracking-tight">
+                Hall of Fame
+              </h3>
+              <p className="text-slate-500 text-sm font-medium mt-1">
+                Verified winning participants across all rounds
+              </p>
+            </div>
+          </div>
+
+       
+        </div>
+
+        {/* Content */}
+        {winners.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 bg-slate-50/50 rounded-3xl border-2 border-dashed border-slate-200">
+            <div className="text-6xl mb-4 grayscale opacity-40">🏅</div>
+            <p className="text-slate-500 font-bold text-lg">
+              No winners crowned yet
+            </p>
+            <p className="text-slate-400 text-sm mt-1">
+              The first winner will appear here after the draw.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {winners.map((winner, index) => {
+              let cardBg = "bg-white hover:bg-slate-50 border-slate-100";
+              let badgeColor = "bg-slate-100 text-slate-600";
+              let icon = "🏅";
+
+              return (
+                <div
+                  key={winner.documentId}
+                  className={`group relative flex flex-col p-6 rounded-3xl border shadow-sm transition-all duration-300 hover:-translate-y-1.5 cursor-default ${cardBg}`}
+                >
+                  {/* Avatar & Rank Header */}
+                  <div className="flex justify-between items-start mb-6">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center text-xl font-black text-slate-700 border border-slate-100/80">
+                        {winner.name
+                          ? winner.name.charAt(0).toUpperCase()
+                          : "👤"}
+                      </div>
+                      <div>
+                        <span
+                          className={`inline-block px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-widest mb-1 ${badgeColor}`}
+                        >
+                          Round {index + 1}
+                        </span>
+                        <h4
+                          className="font-black text-slate-900 text-lg leading-none truncate max-w-[130px]"
+                          title={winner.name}
+                        >
+                          {winner.name}
+                        </h4>
+                      </div>
+                    </div>
+                    <div className="text-4xl drop-shadow-sm group-hover:scale-110 group-hover:rotate-6 transition-all origin-bottom">
+                      {icon}
+                    </div>
+                  </div>
+
+                  {/* Winner Metadata */}
+                  <div className="space-y-3 mt-auto pt-5 border-t border-black/5">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-slate-500 font-bold text-xs uppercase tracking-wider">
+                        Candidate ID
+                      </span>
+                      <span className="font-black text-slate-700 font-mono text-xs bg-white/60 px-2 py-1 rounded-md border border-slate-200/50">
+                        {winner.candidateid || "N/A"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-slate-500 font-bold text-xs uppercase tracking-wider">
+                        Contact
+                      </span>
+                      <span className="font-bold text-slate-700 text-xs">
+                        {winner.phonenumber || "N/A"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-slate-500 font-bold text-xs uppercase tracking-wider">
+                        Won On
+                      </span>
+                      <span className="font-bold text-slate-700 text-xs">
+                        {winner.winned_date
+                          ? new Date(winner.winned_date).toLocaleDateString(
+                              undefined,
+                              {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              }
+                            )
+                          : "TBD"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
