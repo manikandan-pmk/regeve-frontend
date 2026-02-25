@@ -299,11 +299,11 @@ const AdminBiddingDashboard = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("jwt");
-      const response = await axios.get(`${API_URL}/bidding-rounds`, {
+      const response = await axios.get(`${API_URL}/biddings/${documentId}?populate=bidding_rounds`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      let dataList = response.data?.data || [];
+      let dataList = response.data?.data?.bidding_rounds || [];
 
       setRounds(dataList);
 
