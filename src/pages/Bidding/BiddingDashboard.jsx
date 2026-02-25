@@ -1,5 +1,22 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
+import {
+  PencilLine,
+  Calendar,
+  Users,
+  ArrowRight,
+  ShieldCheck,
+  TrendingUp,
+  X,
+  Rocket,
+  Type,
+  Users2,
+  Timer,
+  CheckCircle2,
+  IndianRupee,
+  Settings2,
+  Trash2,
+} from "lucide-react";
 import axios from "axios";
 
 // 🔹 CONFIGURATION
@@ -16,6 +33,9 @@ export default function BiddingDashboard() {
   const [sortBy, setSortBy] = useState("newest");
   const [successMessage, setSuccessMessage] = useState("");
 
+  const [deleteTarget, setDeleteTarget] = useState(null); // Stores the bid object to delete
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const fetchBiddings = async () => {
     try {
       setIsLoading(true);
@@ -27,7 +47,8 @@ export default function BiddingDashboard() {
       const result = response.data;
       if (Array.isArray(result)) extractedData = result;
       else if (Array.isArray(result.data)) extractedData = result.data;
-      else if (Array.isArray(result?.data?.data)) extractedData = result.data.data;
+      else if (Array.isArray(result?.data?.data))
+        extractedData = result.data.data;
       setBiddings(extractedData);
     } catch (error) {
       console.error("AXIOS ERROR:", error.response?.data || error.message);
@@ -53,6 +74,34 @@ export default function BiddingDashboard() {
     }
   };
 
+  const handleDeleteBid = (bid) => {
+    // Instead of window.confirm, we just save the bid and show the UI
+    setDeleteTarget(bid);
+  };
+
+  // 3. The actual API call triggered by the "Confirm" button in the popup
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+
+    setIsDeleting(true);
+    try {
+      const token = localStorage.getItem("jwt");
+      const id = deleteTarget.documentId || deleteTarget.id;
+
+      await axios.delete(`${API_URL}/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      setDeleteTarget(null); // Close popup
+      fetchBiddings(); // Refresh list
+    } catch (error) {
+      console.error("DELETE ERROR:", error.response?.data || error.message);
+      // You can add a "Error" state here to show an animated error message instead of alert
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   useEffect(() => {
     if (documentId) {
       fetchSingleBid(documentId);
@@ -66,13 +115,17 @@ export default function BiddingDashboard() {
     .filter(
       (bid) =>
         bid.nameOfBid?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        bid.biddingid?.toLowerCase().includes(searchTerm.toLowerCase())
+        bid.biddingid?.toLowerCase().includes(searchTerm.toLowerCase()),
     )
     .sort((a, b) => {
-      if (sortBy === "newest") return new Date(b.createdAt) - new Date(a.createdAt);
-      if (sortBy === "oldest") return new Date(a.createdAt) - new Date(b.createdAt);
-      if (sortBy === "amount-high") return (parseInt(b.amount) || 0) - (parseInt(a.amount) || 0);
-      if (sortBy === "amount-low") return (parseInt(a.amount) || 0) - (parseInt(b.amount) || 0);
+      if (sortBy === "newest")
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      if (sortBy === "oldest")
+        return new Date(a.createdAt) - new Date(b.createdAt);
+      if (sortBy === "amount-high")
+        return (parseInt(b.amount) || 0) - (parseInt(a.amount) || 0);
+      if (sortBy === "amount-low")
+        return (parseInt(a.amount) || 0) - (parseInt(b.amount) || 0);
       return 0;
     });
 
@@ -94,6 +147,77 @@ export default function BiddingDashboard() {
         <div className="absolute bottom-[-10%] right-[-5%] w-[500px] h-[500px] bg-purple-200/30 rounded-full blur-[120px] animate-pulse-slower"></div>
       </div>
 
+      {/* PROFESSIONAL DELETE MODAL */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
+          {/* Backdrop with a deeper blur */}
+          <div
+            className="absolute inset-0 bg-slate-900/40 backdrop-blur-md transition-opacity animate-in fade-in duration-300"
+            onClick={() => !isDeleting && setDeleteTarget(null)}
+          />
+
+          {/* Modal Card */}
+          <div className="relative bg-white rounded-3xl shadow-2xl border border-slate-200/60 w-full max-w-md overflow-hidden transform transition-all animate-in zoom-in-95 duration-200">
+            {/* Top Warning Strip */}
+            <div className="h-2 bg-red-500 w-full" />
+
+            <div className="p-8">
+              {/* Icon & Title Group */}
+              <div className="flex items-start gap-5">
+                <div className="flex-shrink-0 w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center border border-red-100">
+                  <Trash2 className="text-red-600" size={28} />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-slate-900 tracking-tight">
+                    Confirm Deletion
+                  </h3>
+                  <p className="text-slate-500 mt-1 text-sm leading-relaxed">
+                    This action is permanent. All data associated with
+                    <span className="font-semibold text-slate-800 ml-1">
+                      "{deleteTarget.nameOfBid}"
+                    </span>
+                    will be removed from our servers.
+                  </p>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-3 mt-8">
+                <button
+                  disabled={isDeleting}
+                  onClick={() => setDeleteTarget(null)}
+                  className="flex-1 px-5 py-3 cursor-pointer rounded-xl text-slate-600 font-semibold hover:bg-slate-50 border border-slate-200 transition-all active:scale-95 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  disabled={isDeleting}
+                  onClick={confirmDelete}
+                  className="flex-[1.5] px-5 cursor-pointer py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold shadow-lg shadow-red-200 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:bg-red-400"
+                >
+                  {isDeleting ? (
+                    <>
+                      <div className="w-4 h-4 cursor-pointer border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>Processing...</span>
+                    </>
+                  ) : (
+                    "Delete Bidding"
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Subtle Footer Note */}
+            <div className="bg-slate-50 px-8 py-3 border-t border-slate-100 flex items-center justify-center gap-2">
+              <span className="w-1.5 h-1.5 bg-slate-300 rounded-full" />
+              <span className="text-[11px] font-medium text-slate-400 uppercase tracking-widest">
+                Secured Admin Action
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
       <Header
         adminId={adminId}
         onBack={handleBack}
@@ -113,7 +237,7 @@ export default function BiddingDashboard() {
             <span className="text-xl">✅</span> {successMessage}
           </div>
         )}
-        
+
         {isLoading ? (
           <LoadingSkeleton />
         ) : currentView === "list" && biddings.length === 0 ? (
@@ -123,6 +247,11 @@ export default function BiddingDashboard() {
             biddings={filteredAndSortedBiddings}
             onCardClick={handleCardClick}
             searchTerm={searchTerm}
+            onEdit={(bid) => {
+              setSelectedBid(bid);
+              setShowCreateModal(true);
+            }}
+            onDelete={handleDeleteBid}
           />
         ) : (
           <SingleBiddingAdminPage
@@ -135,13 +264,16 @@ export default function BiddingDashboard() {
       </main>
 
       {showCreateModal && (
-        <CreateBiddingModal
-          onClose={() => setShowCreateModal(false)}
+        <CreateOrEditBiddingModal
+          existingData={selectedBid}
+          onClose={() => {
+            setShowCreateModal(false);
+            setSelectedBid(null);
+          }}
           onSuccess={() => {
             setShowCreateModal(false);
+            setSelectedBid(null);
             fetchBiddings();
-            setSuccessMessage("New scheme launched successfully!");
-            setTimeout(() => setSuccessMessage(""), 4000);
           }}
         />
       )}
@@ -149,17 +281,32 @@ export default function BiddingDashboard() {
   );
 }
 
-function Header({ adminId, onBack, currentView, onCreate, hasItems, sortBy, onSortChange, onRefresh }) {
+function Header({
+  adminId,
+  onBack,
+  currentView,
+  onCreate,
+  hasItems,
+  sortBy,
+  onSortChange,
+  onRefresh,
+}) {
   const navigate = useNavigate();
   return (
     <header className="fixed top-0 left-0 w-full z-40 bg-white/70 backdrop-blur-md border-b border-slate-200/60">
       <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button
-            onClick={currentView === "detail" ? onBack : () => navigate(`/${adminId}/LuckyDrawHome`)}
+            onClick={
+              currentView === "detail"
+                ? onBack
+                : () => navigate(`/${adminId}/LuckyDrawHome`)
+            }
             className="group cursor-pointer flex items-center gap-2 text-slate-600 hover:text-indigo-600 font-bold transition-all px-4 py-2 rounded-xl hover:bg-indigo-50"
           >
-            <span className="group-hover:-translate-x-1 transition-transform">←</span>
+            <span className="group-hover:-translate-x-1 transition-transform">
+              ←
+            </span>
             <span>{currentView === "detail" ? "Back" : "Dashboard"}</span>
           </button>
         </div>
@@ -182,8 +329,18 @@ function Header({ adminId, onBack, currentView, onCreate, hasItems, sortBy, onSo
                 onClick={onRefresh}
                 className="cursor-pointer p-2.5 rounded-xl text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all border border-transparent hover:border-indigo-100"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2.5}
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
                 </svg>
               </button>
 
@@ -192,7 +349,7 @@ function Header({ adminId, onBack, currentView, onCreate, hasItems, sortBy, onSo
                 className="cursor-pointer flex items-center gap-2 bg-slate-900 hover:bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold shadow-lg shadow-slate-200 transition-all transform hover:-translate-y-0.5 active:scale-95"
               >
                 <span>+</span>
-                <span className="hidden sm:inline">New Scheme</span>
+                <span className="hidden sm:inline">New Bidding</span>
               </button>
             </>
           )}
@@ -202,12 +359,20 @@ function Header({ adminId, onBack, currentView, onCreate, hasItems, sortBy, onSo
   );
 }
 
-function DashboardOverview({ biddings, onCardClick, searchTerm }) {
+function DashboardOverview({
+  biddings,
+  onCardClick,
+  searchTerm,
+  onEdit,
+  onDelete,
+}) {
   return (
     <div className="space-y-8">
       {biddings.length === 0 ? (
         <div className="text-center py-20 bg-white/40 rounded-[2.5rem] border-2 border-dashed border-slate-200">
-          <p className="text-slate-400 text-xl font-medium">No matches found for "{searchTerm}"</p>
+          <p className="text-slate-400 text-xl font-medium">
+            No matches found for "{searchTerm}"
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -217,6 +382,8 @@ function DashboardOverview({ biddings, onCardClick, searchTerm }) {
               data={bid}
               index={index}
               onClick={() => onCardClick(bid)}
+              onEdit={onEdit}
+              onDelete={onDelete}
             />
           ))}
         </div>
@@ -225,185 +392,521 @@ function DashboardOverview({ biddings, onCardClick, searchTerm }) {
   );
 }
 
-function BiddingCard({ data, index, onClick }) {
-  const { biddingid, nameOfBid, amount, maxPeople, durationUnit, durationValue } = data;
+function BiddingCard({ data, index, onClick, onEdit, onDelete }) {
+  // Added onDelete prop
+  const {
+    documentId, // Ensure you are using the ID needed for the API
+    biddingid,
+    nameOfBid,
+    amount,
+    maxPeople,
+    durationUnit,
+    durationValue,
+  } = data;
+
+  const handleEditClick = (e) => {
+    e.stopPropagation();
+    onEdit(data);
+  };
+
+  const handleDeleteClick = (e) => {
+    e.stopPropagation();
+    onDelete(data); // Call the delete function passed from parent
+  };
 
   return (
     <div
       onClick={onClick}
-      className="group relative cursor-pointer bg-white rounded-[2rem] p-7 border border-slate-200/60 shadow-sm hover:shadow-2xl hover:shadow-indigo-100/50 transition-all duration-500 ease-out flex flex-col h-full overflow-hidden hover:-translate-y-2"
-      style={{ animation: `cardFadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) ${index * 0.1}s both` }}
+      className="group relative bg-white rounded-[2rem] p-7 border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_50px_rgba(79,70,229,0.15)] transition-all duration-500 cursor-pointer flex flex-col h-full overflow-hidden hover:-translate-y-1"
     >
-      {/* Visual Accent */}
-      <div className="absolute top-0 left-0 w-0 h-1.5 bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-500 group-hover:w-full"></div>
-      
-      <div className="relative z-10 flex justify-between items-start mb-6">
-        <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center text-2xl group-hover:scale-110 group-hover:rotate-6 transition-transform duration-300">
-          💰
+      <div className="absolute -top-10 -right-10 w-32 h-32 bg-indigo-50/50 rounded-full blur-3xl group-hover:bg-indigo-100 transition-colors duration-500" />
+
+      {/* ACTION BUTTONS CONTAINER */}
+      <div className="absolute top-6 right-6 z-20 flex gap-2">
+        {/* Trash/Delete Button */}
+        <button
+          onClick={handleDeleteClick}
+          className="p-2.5 bg-red-50/80 backdrop-blur-md text-red-500 hover:text-white hover:bg-red-500 rounded-2xl shadow-sm border border-red-100 transition-all duration-300 cursor-pointer hover:rotate-12 active:scale-90"
+          title="Delete Scheme"
+        >
+          <Trash2 size={18} strokeWidth={2.5} />
+        </button>
+
+        {/* Edit Button */}
+        <button
+          onClick={handleEditClick}
+          className="p-2.5 bg-white/80 backdrop-blur-md text-slate-400 hover:text-indigo-600 hover:bg-white rounded-2xl shadow-sm border border-slate-100 transition-all duration-300 cursor-pointer hover:rotate-12 active:scale-90"
+          title="Edit Scheme"
+        >
+          <PencilLine size={18} strokeWidth={2.5} />
+        </button>
+      </div>
+
+      {/* Rest of your card content... */}
+      <div className="relative z-10 flex items-center gap-4 mb-8">
+        <div className="w-14 h-14 bg-gradient-to-tr from-indigo-600 to-violet-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-200 rotate-3 group-hover:rotate-0 transition-transform duration-500">
+          <ShieldCheck size={28} />
         </div>
-        <span className="px-3 py-1 bg-slate-100 text-slate-500 rounded-lg text-[10px] font-black uppercase tracking-wider">
-          {biddingid?.split('-')[0] || "Active"}
+        <div>
+          <span className="inline-block px-2.5 py-0.5 bg-indigo-50 text-indigo-600 rounded-lg text-[10px] font-black tracking-widest uppercase mb-1">
+            {biddingid?.split("-")[0] || "PREMIUM"}
+          </span>
+          <h3 className="text-xl font-bold text-slate-800 leading-tight">
+            {nameOfBid}
+          </h3>
+        </div>
+      </div>
+
+      {/* Main Metric Area */}
+      <div className="relative z-10 mb-8 p-5 bg-slate-50/80 rounded-[1.5rem] border border-white group-hover:bg-white group-hover:border-indigo-50 transition-all duration-500">
+        <div className="flex justify-between items-end">
+          <div>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tight mb-1">
+              Available Pool
+            </p>
+            <div className="flex items-center gap-1.5">
+              <span className="text-2xl font-black text-slate-900">
+                ₹{parseInt(amount || 0).toLocaleString()}
+              </span>
+            </div>
+          </div>
+          <p className="text-[10px] font-medium text-slate-400">
+            REF: {biddingid || "CH-0000"}
+          </p>
+        </div>
+      </div>
+
+      {/* Stats Row */}
+      <div className="relative z-10 flex items-center justify-between px-2 mb-auto">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-amber-50 text-amber-600 rounded-xl">
+            <Calendar size={18} />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase leading-none mb-1">
+              Duration
+            </p>
+            <p className="text-sm font-extrabold text-slate-700">
+              {durationValue} {durationUnit}
+            </p>
+          </div>
+        </div>
+        <div className="h-8 w-px bg-slate-100" />
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
+            <Users size={18} />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase leading-none mb-1">
+              Capacity
+            </p>
+            <p className="text-sm font-extrabold text-slate-700">
+              {maxPeople} Slots
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-8 pt-5 border-t border-slate-50 flex items-center justify-between group/btn">
+        <span className="text-sm font-bold text-slate-400 group-hover:text-indigo-600 transition-colors">
+          Manage Scheme
         </span>
-      </div>
-
-      <div className="relative z-10 flex-1">
-        <h3 className="text-2xl font-black text-slate-800 mb-1 tracking-tight group-hover:text-indigo-600 transition-colors">
-          {nameOfBid}
-        </h3>
-        <p className="text-slate-400 text-sm font-medium mb-6">ID: {biddingid || "CH-0000"}</p>
-
-        <div className="space-y-4 pt-6 border-t border-slate-50">
-          <div className="flex justify-between items-end">
-            <span className="text-xs font-bold text-slate-400 uppercase">Total Pool</span>
-            <span className="text-2xl font-black text-slate-900 tracking-tighter">
-              ₹{parseInt(amount || 0).toLocaleString()}
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-slate-50 p-3 rounded-xl">
-              <p className="text-[10px] font-bold text-slate-400 uppercase">Duration</p>
-              <p className="font-bold text-slate-700 text-sm">{durationValue} {durationUnit}</p>
-            </div>
-            <div className="bg-slate-50 p-3 rounded-xl">
-              <p className="text-[10px] font-bold text-slate-400 uppercase">Slots</p>
-              <p className="font-bold text-slate-700 text-sm">{maxPeople} Members</p>
-            </div>
-          </div>
+        <div className="flex items-center justify-center w-10 h-10 rounded-2xl bg-slate-900 text-white group-hover:bg-indigo-600 group-hover:scale-110 transition-all duration-300">
+          <ArrowRight size={20} />
         </div>
-      </div>
-      
-      <div className="mt-6 flex items-center text-indigo-600 text-sm font-bold opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0">
-        Manage Scheme <span className="ml-2">→</span>
       </div>
     </div>
   );
 }
 
-function CreateBiddingModal({ onClose, onSuccess }) {
+// function CreateBiddingModal({ onClose, onSuccess }) {
+//   const [formData, setFormData] = useState({
+//     nameOfBid: "",
+//     amount: "",
+//     maxPeople: "",
+//     durationValue: "",
+//     durationUnit: "Monthly",
+//   });
+//   const [isSubmitting, setIsSubmitting] = useState(false);
+
+//   const handleSubmit = async (e) => {
+//     e.preventDefault();
+//     if (isSubmitting) return;
+//     setIsSubmitting(true);
+//     try {
+//       const token = localStorage.getItem("jwt");
+//       const payload = {
+//         data: {
+//           nameOfBid: formData.nameOfBid.trim(),
+//           amount: Number(formData.amount),
+//           maxPeople: Number(formData.maxPeople),
+//           durationValue: Number(formData.durationValue),
+//           durationUnit: formData.durationUnit,
+//         },
+//       };
+//       await axios.post(`${API_URL}/create`, payload, {
+//         headers: {
+//           Authorization: `Bearer ${token}`,
+//           "Content-Type": "application/json",
+//         },
+//       });
+//       onSuccess();
+//     } catch (error) {
+//       alert(error.response?.data?.message || "Failed to create scheme");
+//     } finally {
+//       setIsSubmitting(false);
+//     }
+//   };
+
+//   const handleChange = (e) =>
+//     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+
+//   return (
+//     <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in">
+//       <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden animate-scale-up border border-white">
+//         <div className="px-10 py-8 bg-slate-900 text-white">
+//           <h3 className="text-3xl font-black tracking-tight">Launch Scheme</h3>
+//           <p className="text-slate-400 text-sm mt-1">
+//             Configure your new chit fund parameters
+//           </p>
+//         </div>
+
+//         <form onSubmit={handleSubmit} className="p-10 space-y-6">
+//           <div className="space-y-2">
+//             <label className="text-xs font-black text-slate-500 uppercase tracking-widest">
+//               Scheme Title
+//             </label>
+//             <input
+//               required
+//               name="nameOfBid"
+//               value={formData.nameOfBid}
+//               onChange={handleChange}
+//               className="w-full px-5 py-4 rounded-2xl border-2 border-slate-100 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 outline-none transition-all font-bold text-slate-700"
+//               placeholder="Enter scheme name..."
+//             />
+//           </div>
+
+//           <div className="grid grid-cols-2 gap-6">
+//             <div className="space-y-2">
+//               <label className="text-xs font-black text-slate-500 uppercase tracking-widest">
+//                 Total Amount (₹)
+//               </label>
+//               <input
+//                 required
+//                 type="number"
+//                 name="amount"
+//                 value={formData.amount}
+//                 onChange={handleChange}
+//                 className="w-full px-5 py-4 rounded-2xl border-2 border-slate-100 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 outline-none transition-all font-bold text-slate-700"
+//                 placeholder="50,000"
+//               />
+//             </div>
+//             <div className="space-y-2">
+//               <label className="text-xs font-black text-slate-500 uppercase tracking-widest">
+//                 Member Limit
+//               </label>
+//               <input
+//                 required
+//                 type="number"
+//                 name="maxPeople"
+//                 value={formData.maxPeople}
+//                 onChange={handleChange}
+//                 className="w-full px-5 py-4 rounded-2xl border-2 border-slate-100 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 outline-none transition-all font-bold text-slate-700"
+//                 placeholder="20"
+//               />
+//             </div>
+//           </div>
+
+//           <div className="grid grid-cols-2 gap-6">
+//             <div className="space-y-2">
+//               <label className="text-xs font-black text-slate-500 uppercase tracking-widest">
+//                 Duration
+//               </label>
+//               <input
+//                 required
+//                 type="number"
+//                 name="durationValue"
+//                 value={formData.durationValue}
+//                 onChange={handleChange}
+//                 className="w-full px-5 py-4 rounded-2xl border-2 border-slate-100 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 outline-none transition-all font-bold text-slate-700"
+//                 placeholder="12"
+//               />
+//             </div>
+//             <div className="space-y-2">
+//               <label className="text-xs font-black text-slate-500 uppercase tracking-widest">
+//                 Interval
+//               </label>
+//               <select
+//                 name="durationUnit"
+//                 value={formData.durationUnit}
+//                 onChange={handleChange}
+//                 className="w-full cursor-pointer px-5 py-4 rounded-2xl border-2 border-slate-100 focus:border-indigo-500 outline-none transition-all font-bold text-slate-700"
+//               >
+//                 <option value="Monthly">Monthly</option>
+//                 <option value="Weekly">Weekly</option>
+//               </select>
+//             </div>
+//           </div>
+
+//           <div className="flex gap-4 pt-4">
+//             <button
+//               type="button"
+//               onClick={onClose}
+//               className="flex-1 cursor-pointer py-4 rounded-2xl bg-slate-50 text-slate-600 font-bold hover:bg-slate-100 transition-all"
+//             >
+//               Cancel
+//             </button>
+//             <button
+//               type="submit"
+//               disabled={isSubmitting}
+//               className="flex-[2] cursor-pointer py-4 rounded-2xl bg-indigo-600 text-white font-bold shadow-xl shadow-indigo-100 hover:bg-indigo-700 transform hover:-translate-y-1 active:scale-95 transition-all disabled:opacity-50"
+//             >
+//               {isSubmitting ? "Processing..." : "Create Scheme"}
+//             </button>
+//           </div>
+//         </form>
+//       </div>
+//     </div>
+//   );
+// }
+
+function CreateOrEditBiddingModal({ onClose, onSuccess, existingData }) {
+  const isEditMode = !!existingData?.documentId;
+ 
+
+  // State for Form
   const [formData, setFormData] = useState({
-    nameOfBid: "",
-    amount: "",
-    maxPeople: "",
-    durationValue: "",
-    durationUnit: "Monthly",
+    nameOfBid: existingData?.nameOfBid || "",
+    amount: existingData?.amount || "",
+    maxPeople: existingData?.maxPeople || "",
+    durationValue: existingData?.durationValue || "",
+    durationUnit: existingData?.durationUnit || "Monthly",
   });
+
+  // State for UI
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (isSubmitting) return;
-    setIsSubmitting(true);
-    try {
-      const token = localStorage.getItem("jwt");
-      const payload = {
-        data: {
-          nameOfBid: formData.nameOfBid.trim(),
-          amount: Number(formData.amount),
-          maxPeople: Number(formData.maxPeople),
-          durationValue: Number(formData.durationValue),
-          durationUnit: formData.durationUnit,
-        },
-      };
-      await axios.post(`${API_URL}/create`, payload, {
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      });
-      onSuccess();
-    } catch (error) {
-      alert(error.response?.data?.message || "Failed to create scheme");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  const handleChange = (e) =>
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
-  const handleChange = (e) => setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  if (isSubmitting) return;
+  setIsSubmitting(true);
+
+  try {
+    const token = localStorage.getItem("jwt");
+
+    const payload = {
+      data: {
+        nameOfBid: formData.nameOfBid.trim(),
+        amount: Number(formData.amount),
+        maxPeople: Number(formData.maxPeople),
+        durationValue: Number(formData.durationValue),
+        durationUnit: formData.durationUnit,
+      },
+    };
+
+    const url = isEditMode
+      ? `${API_URL}/${existingData.documentId}`
+      : `${API_URL}/create`;
+
+    const method = isEditMode ? "put" : "post";
+
+    await axios[method](url, payload, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    onSuccess();
+  } catch (error) {
+    console.error("EDIT ERROR:", error.response?.data || error.message);
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
+  
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden animate-scale-up border border-white">
-        <div className="px-10 py-8 bg-slate-900 text-white">
-          <h3 className="text-3xl font-black tracking-tight">Launch Scheme</h3>
-          <p className="text-slate-400 text-sm mt-1">Configure your new chit fund parameters</p>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300">
+      {/* --- MAIN FORM MODAL --- */}
+      <div className="bg-white w-full max-w-xl rounded-[2.5rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.2)] overflow-hidden border border-slate-100 flex flex-col max-h-[90vh]">
+        {/* HEADER */}
+        <div className="relative px-8 pt-8 pb-6 bg-slate-50 border-b border-slate-100">
+          <button
+            onClick={onClose}
+            className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-900 hover:bg-white rounded-full transition-all"
+          >
+            <X size={20} />
+          </button>
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-200">
+              {isEditMode ? <Settings2 size={28} /> : <Rocket size={28} />}
+            </div>
+            <div>
+              <h3 className="text-2xl font-black text-slate-900">
+                {isEditMode ? "Modify Bidding" : "Launch New Bidding"}
+              </h3>
+              <p className="text-slate-500 text-sm font-medium">
+                Manage your bidding pool details.
+              </p>
+            </div>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-10 space-y-6">
-          <div className="space-y-2">
-            <label className="text-xs font-black text-slate-500 uppercase tracking-widest">Scheme Title</label>
-            <input
-              required name="nameOfBid" value={formData.nameOfBid} onChange={handleChange}
-              className="w-full px-5 py-4 rounded-2xl border-2 border-slate-100 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 outline-none transition-all font-bold text-slate-700"
-              placeholder="Enter scheme name..."
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="text-xs font-black text-slate-500 uppercase tracking-widest">Total Amount (₹)</label>
-              <input
-                required type="number" name="amount" value={formData.amount} onChange={handleChange}
-                className="w-full px-5 py-4 rounded-2xl border-2 border-slate-100 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 outline-none transition-all font-bold text-slate-700"
-                placeholder="50,000"
+        {/* FORM */}
+        <form
+          onSubmit={handleSubmit}
+          id="bidding-form"
+          className="p-8 space-y-5 overflow-y-auto"
+        >
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-black text-slate-400 uppercase ml-1 tracking-wider">
+              Bidding Name
+            </label>
+            <div className="relative group">
+              <Type
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors"
+                size={18}
               />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-black text-slate-500 uppercase tracking-widest">Member Limit</label>
               <input
-                required type="number" name="maxPeople" value={formData.maxPeople} onChange={handleChange}
-                className="w-full px-5 py-4 rounded-2xl border-2 border-slate-100 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 outline-none transition-all font-bold text-slate-700"
-                placeholder="20"
+                required
+                name="nameOfBid"
+                value={formData.nameOfBid}
+                onChange={handleChange}
+                className="w-full pl-12 pr-5 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:bg-white focus:border-indigo-500 outline-none transition-all font-semibold text-slate-700"
+                placeholder="Enter name"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="text-xs font-black text-slate-500 uppercase tracking-widest">Duration</label>
-              <input
-                required type="number" name="durationValue" value={formData.durationValue} onChange={handleChange}
-                className="w-full px-5 py-4 rounded-2xl border-2 border-slate-100 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 outline-none transition-all font-bold text-slate-700"
-                placeholder="12"
-              />
+          <div className="grid grid-cols-2 gap-5">
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-black text-slate-400 uppercase ml-1 tracking-wider">
+                Total Pool
+              </label>
+              <div className="relative group">
+                <IndianRupee
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors"
+                  size={18}
+                />
+                <input
+                  required
+                  type="number"
+                  name="amount"
+                  value={formData.amount}
+                  onChange={handleChange}
+                  className="w-full pl-12 pr-5 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:bg-white focus:border-indigo-500 outline-none transition-all font-semibold text-slate-700"
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <label className="text-xs font-black text-slate-500 uppercase tracking-widest">Interval</label>
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-black text-slate-400 uppercase ml-1 tracking-wider">
+                Member Limit
+              </label>
+              <div className="relative group">
+                <Users2
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors"
+                  size={18}
+                />
+                <input
+                  required
+                  type="number"
+                  name="maxPeople"
+                  value={formData.maxPeople}
+                  onChange={handleChange}
+                  className="w-full pl-12 pr-5 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:bg-white focus:border-indigo-500 outline-none transition-all font-semibold text-slate-700"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-black text-slate-400 uppercase ml-1 tracking-wider">
+              Duration Settings
+            </label>
+            <div className="flex gap-3">
+              <div className="relative group flex-[1.5]">
+                <Timer
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors"
+                  size={18}
+                />
+                <input
+                  required
+                  type="number"
+                  name="durationValue"
+                  value={formData.durationValue}
+                  onChange={handleChange}
+                  className="w-full pl-12 pr-5 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:bg-white focus:border-indigo-500 outline-none transition-all font-semibold text-slate-700"
+                />
+              </div>
               <select
-                name="durationUnit" value={formData.durationUnit} onChange={handleChange}
-                className="w-full cursor-pointer px-5 py-4 rounded-2xl border-2 border-slate-100 focus:border-indigo-500 outline-none transition-all font-bold text-slate-700"
+                name="durationUnit"
+                value={formData.durationUnit}
+                onChange={handleChange}
+                className="flex-1 px-5 py-4 bg-slate-100 border-2 border-slate-100 rounded-2xl outline-none font-bold text-slate-600 cursor-pointer focus:border-indigo-500 transition-all"
               >
                 <option value="Monthly">Monthly</option>
                 <option value="Weekly">Weekly</option>
               </select>
             </div>
           </div>
+        </form>
 
-          <div className="flex gap-4 pt-4">
+        {/* FOOTER */}
+        <div className="p-8 bg-slate-50 border-t border-slate-100 flex items-center gap-4">
+          <div className="flex-1 flex gap-3">
             <button
-              type="button" onClick={onClose}
-              className="flex-1 cursor-pointer py-4 rounded-2xl bg-slate-50 text-slate-600 font-bold hover:bg-slate-100 transition-all"
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-4 px-6 rounded-2xl bg-white border border-slate-200 text-slate-600 font-black hover:bg-slate-100 transition-all"
             >
               Cancel
             </button>
             <button
-              type="submit" disabled={isSubmitting}
-              className="flex-[2] cursor-pointer py-4 rounded-2xl bg-indigo-600 text-white font-bold shadow-xl shadow-indigo-100 hover:bg-indigo-700 transform hover:-translate-y-1 active:scale-95 transition-all disabled:opacity-50"
+              type="submit"
+              form="bidding-form"
+              disabled={isSubmitting}
+              className="flex-[2] py-4 px-6 rounded-2xl bg-slate-900 text-white font-black hover:bg-indigo-600 shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 transition-all"
             >
-              {isSubmitting ? "Processing..." : "Create Scheme"}
+              {isSubmitting ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <>
+                  <CheckCircle2 size={20} />
+                  {isEditMode ? "Save Changes" : "Confirm Launch"}
+                </>
+              )}
             </button>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );
 }
-
 // Helpers for Single Page and States
 function EmptyState({ onCreate }) {
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] text-center animate-fade-in">
-      <div className="w-24 h-24 bg-indigo-50 text-4xl flex items-center justify-center rounded-3xl mb-8">✨</div>
-      <h2 className="text-4xl font-black text-slate-800 mb-4 tracking-tight">Empty Dashboard</h2>
-      <p className="text-slate-500 max-w-sm mx-auto mb-10 font-medium">You haven't launched any bidding schemes yet. Ready to start your first one?</p>
-      <button onClick={onCreate} className="cursor-pointer bg-slate-900 text-white px-10 py-4 rounded-2xl font-bold text-lg hover:bg-indigo-600 transition-all shadow-2xl">Launch New Scheme</button>
+      <div className="w-24 h-24 bg-indigo-50 text-4xl flex items-center justify-center rounded-3xl mb-8">
+        ✨
+      </div>
+      <h2 className="text-4xl font-black text-slate-800 mb-4 tracking-tight">
+        Empty Dashboard
+      </h2>
+      <p className="text-slate-500 max-w-sm mx-auto mb-10 font-medium">
+        You haven't launched any bidding schemes yet. Ready to start your first
+        one?
+      </p>
+      <button
+        onClick={onCreate}
+        className="cursor-pointer bg-slate-900 text-white px-10 py-4 rounded-2xl font-bold text-lg hover:bg-indigo-600 transition-all shadow-2xl"
+      >
+        Launch New Scheme
+      </button>
     </div>
   );
 }
@@ -412,7 +915,10 @@ function LoadingSkeleton() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
       {[1, 2, 3].map((i) => (
-        <div key={i} className="bg-white rounded-[2rem] p-8 h-80 animate-pulse border border-slate-100">
+        <div
+          key={i}
+          className="bg-white rounded-[2rem] p-8 h-80 animate-pulse border border-slate-100"
+        >
           <div className="w-14 h-14 bg-slate-100 rounded-2xl mb-6"></div>
           <div className="h-6 bg-slate-100 rounded-lg w-3/4 mb-4"></div>
           <div className="h-4 bg-slate-100 rounded-lg w-1/2 mb-10"></div>
@@ -425,7 +931,12 @@ function LoadingSkeleton() {
 
 // Keep your existing SingleBiddingAdminPage component here (Logic remains unchanged)
 function SingleBiddingAdminPage({ bid, onBack, adminId, navigate }) {
-  if (!bid) return <div className="text-center py-20 font-bold text-slate-400">Loading details...</div>;
+  if (!bid)
+    return (
+      <div className="text-center py-20 font-bold text-slate-400">
+        Loading details...
+      </div>
+    );
 
   // Logic for calculations
   const winners = bid.biddingwinners || [];
@@ -447,21 +958,29 @@ function SingleBiddingAdminPage({ bid, onBack, adminId, navigate }) {
             </h1>
           </div>
           <div className="text-right">
-            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Current Pool</p>
+            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">
+              Current Pool
+            </p>
             <p className="text-4xl font-black text-indigo-600 tracking-tighter">
               ₹{parseInt(bid.amount || 0).toLocaleString()}
             </p>
           </div>
         </div>
         <div className="flex gap-4">
-          <button 
-            onClick={() => navigate(`/${adminId}/bidding-dashboard/${bid.documentId}/participants`)} 
+          <button
+            onClick={() =>
+              navigate(
+                `/${adminId}/bidding-dashboard/${bid.documentId}/participants`,
+              )
+            }
             className="cursor-pointer px-8 py-3 bg-slate-900 text-white rounded-2xl font-bold hover:bg-indigo-600 transition-all shadow-lg shadow-slate-200"
           >
             Manage Members
           </button>
-          <button 
-            onClick={() => navigate(`/${adminId}/admin-bidding-dashboard/${bid.documentId}`)} 
+          <button
+            onClick={() =>
+              navigate(`/${adminId}/admin-bidding-dashboard/${bid.documentId}`)
+            }
             className="cursor-pointer px-8 py-3 bg-white border-2 border-slate-100 text-slate-700 rounded-2xl font-bold hover:bg-slate-50 transition-all"
           >
             Open Admin Panel
@@ -471,23 +990,32 @@ function SingleBiddingAdminPage({ bid, onBack, adminId, navigate }) {
 
       {/* 2. Three Cards Section (Statistics) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        
         {/* Card 1: Bidding Progress */}
         <div className="bg-white/80 backdrop-blur-md p-8 rounded-[2rem] border border-white shadow-xl shadow-slate-100/50 flex flex-col justify-between">
           <div className="flex items-center gap-4 mb-8">
             <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-xl shadow-inner">
               📈
             </div>
-            <h3 className="font-black text-slate-800 tracking-tight text-lg">Bidding Progress</h3>
+            <h3 className="font-black text-slate-800 tracking-tight text-lg">
+              Bidding Progress
+            </h3>
           </div>
           <div className="space-y-4">
             <div className="flex justify-between items-center text-sm">
-              <span className="font-bold text-slate-400 uppercase tracking-widest text-[10px]">Total Rounds</span>
-              <span className="font-black text-slate-900 text-lg">{totalRounds}</span>
+              <span className="font-bold text-slate-400 uppercase tracking-widest text-[10px]">
+                Total Rounds
+              </span>
+              <span className="font-black text-slate-900 text-lg">
+                {totalRounds}
+              </span>
             </div>
             <div className="flex justify-between items-center text-sm">
-              <span className="font-bold text-slate-400 uppercase tracking-widest text-[10px]">Completed</span>
-              <span className="font-black text-indigo-600 text-lg">{completedRounds}</span>
+              <span className="font-bold text-slate-400 uppercase tracking-widest text-[10px]">
+                Completed
+              </span>
+              <span className="font-black text-indigo-600 text-lg">
+                {completedRounds}
+              </span>
             </div>
           </div>
         </div>
@@ -497,7 +1025,9 @@ function SingleBiddingAdminPage({ bid, onBack, adminId, navigate }) {
           <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center text-xl mb-4 shadow-inner">
             🏆
           </div>
-          <h3 className="font-black text-slate-800 tracking-tight text-lg mb-4">Latest Winner</h3>
+          <h3 className="font-black text-slate-800 tracking-tight text-lg mb-4">
+            Latest Winner
+          </h3>
           {winners.length > 0 ? (
             <div>
               <p className="text-2xl font-black text-slate-900 leading-tight">
@@ -513,15 +1043,21 @@ function SingleBiddingAdminPage({ bid, onBack, adminId, navigate }) {
         </div>
 
         {/* Card 3: Participants */}
-        <div 
-          onClick={() => navigate(`/${adminId}/bidding-dashboard/${bid.documentId}/participants`)}
+        <div
+          onClick={() =>
+            navigate(
+              `/${adminId}/bidding-dashboard/${bid.documentId}/participants`,
+            )
+          }
           className="group bg-white/80 backdrop-blur-md p-8 rounded-[2rem] border border-white shadow-xl shadow-slate-100/50 flex flex-col justify-between cursor-pointer hover:border-indigo-200 transition-all"
         >
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-xl shadow-inner">
               👥
             </div>
-            <h3 className="font-black text-slate-800 tracking-tight text-lg">Participants</h3>
+            <h3 className="font-black text-slate-800 tracking-tight text-lg">
+              Participants
+            </h3>
           </div>
           <div className="mt-8">
             <p className="text-5xl font-black text-slate-900 tracking-tighter">
@@ -532,7 +1068,6 @@ function SingleBiddingAdminPage({ bid, onBack, adminId, navigate }) {
             </p>
           </div>
         </div>
-
       </div>
     </div>
   );
@@ -548,6 +1083,14 @@ const styles = `
   @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
   .animate-pulse-slow { animation: pulse 6s infinite; }
   .animate-pulse-slower { animation: pulse 8s infinite; }
+
+  @keyframes zoomIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+.animate-in {
+  animation: zoomIn 0.2s ease-out forwards;
+}
 `;
 
 if (typeof document !== "undefined") {

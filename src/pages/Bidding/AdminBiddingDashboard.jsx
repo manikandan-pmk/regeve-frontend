@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
+import { io } from "socket.io-client";
 import {
   Calendar,
   Clock,
@@ -210,6 +211,8 @@ const AdminBiddingDashboard = () => {
   const [activeRoundLive, setActiveRoundLive] = useState(null);
   const [copied, setCopied] = useState(false);
   const [biddingConfig, setBiddingConfig] = useState(null);
+  const [onlineParticipants, setOnlineParticipants] = useState([]);
+  const [socket, setSocket] = useState(null);
 
   const handleCopyLink = () => {
     const participantUrl = `${window.location.origin}/#/${adminId || "admin"}/participant-bidding/${documentId}`;
@@ -233,6 +236,42 @@ const AdminBiddingDashboard = () => {
 
   const [loading, setLoading] = useState(true);
   const [apiActionLoading, setApiActionLoading] = useState(false);
+
+  useEffect(() => {
+    const newSocket = io("https://api.regeve.in", {
+      transports: ["polling", "websocket"],
+    });
+
+    newSocket.on("connect", () => {
+      console.log("ADMIN CONNECTED:", newSocket.id);
+    });
+
+    newSocket.on("connect_error", (err) => {
+      console.log("SOCKET ERROR:", err.message);
+    });
+
+    setSocket(newSocket);
+
+    return () => {
+      newSocket.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!socket || !selectedRound) return;
+
+    socket.emit("join-round", {
+      roundId: selectedRound.documentId,
+    });
+
+    socket.on("online-participants", (participants) => {
+      setOnlineParticipants(participants);
+    });
+
+    return () => {
+      socket.off("online-participants");
+    };
+  }, [socket, selectedRound]);
 
   // Fetch Bidding Configuration
   const fetchBiddingConfig = async () => {
@@ -1015,6 +1054,38 @@ const AdminBiddingDashboard = () => {
             </div>
           )}
 
+          {selectedRound && (
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 mb-8">
+              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                <h3 className="font-black text-slate-800 text-sm uppercase tracking-widest">
+                  🟢 Online Participants ({onlineParticipants.length})
+                </h3>
+              </div>
+
+              <div className="p-6">
+                {onlineParticipants.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {onlineParticipants.map((user, index) => (
+                      <div
+                        key={index}
+                        className="p-4 bg-emerald-50 border border-emerald-100 rounded-xl"
+                      >
+                        <p className="font-bold text-slate-800">{user.name}</p>
+                        <p className="text-xs text-slate-500 font-bold">
+                          ID: {user.candidateid}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-slate-400 font-bold">
+                    No participants online
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Bidding History */}
           {selectedRound && (
             <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200 overflow-hidden">
@@ -1046,68 +1117,71 @@ const AdminBiddingDashboard = () => {
                     </tr>
                   </thead>
 
-                 <tbody className="divide-y divide-slate-50">
-  {selectedRound?.Bidding_History &&
-  selectedRound.Bidding_History.length > 0 ? (
-    (() => {
-      // 🔹 Sort bids by time (oldest first)
-      const sortedHistory = [...selectedRound.Bidding_History].sort(
-        (a, b) => new Date(a.bidTime) - new Date(b.bidTime)
-      );
+                  <tbody className="divide-y divide-slate-50">
+                    {selectedRound?.Bidding_History &&
+                    selectedRound.Bidding_History.length > 0 ? (
+                      (() => {
+                        // 🔹 Sort bids by time (oldest first)
+                        const sortedHistory = [
+                          ...selectedRound.Bidding_History,
+                        ].sort(
+                          (a, b) => new Date(a.bidTime) - new Date(b.bidTime),
+                        );
 
-      // 🔹 Starting total amount
-      let runningAmount = parseInt(newRound?.totalAmount) || 0;
+                        // 🔹 Starting total amount
+                        let runningAmount =
+                          parseInt(newRound?.totalAmount) || 0;
 
-      return sortedHistory.map((bid, index) => {
-        const bidAmount = parseInt(bid.amount) || 0;
+                        return sortedHistory.map((bid, index) => {
+                          const bidAmount = parseInt(bid.amount) || 0;
 
-        // 🔹 Subtract from previous remaining
-        runningAmount -= bidAmount;
+                          // 🔹 Subtract from previous remaining
+                          runningAmount -= bidAmount;
 
-        return (
-          <tr
-            key={index}
-            className="hover:bg-slate-50/80 transition-colors"
-          >
-            {/* Bidder Name */}
-            <td className="px-8 py-5 text-sm font-black text-slate-800">
-              {bid.name}
-            </td>
+                          return (
+                            <tr
+                              key={index}
+                              className="hover:bg-slate-50/80 transition-colors"
+                            >
+                              {/* Bidder Name */}
+                              <td className="px-8 py-5 text-sm font-black text-slate-800">
+                                {bid.name}
+                              </td>
 
-            {/* Bid Amount */}
-            <td className="px-8 py-5 text-sm font-bold text-indigo-600">
-              ₹{bidAmount.toLocaleString()}
-            </td>
+                              {/* Bid Amount */}
+                              <td className="px-8 py-5 text-sm font-bold text-indigo-600">
+                                ₹{bidAmount.toLocaleString()}
+                              </td>
 
-            {/* Remaining Amount (Running Calculation) */}
-            <td className="px-8 py-5 text-sm font-bold text-emerald-600">
-              ₹{runningAmount.toLocaleString()}
-            </td>
+                              {/* Remaining Amount (Running Calculation) */}
+                              <td className="px-8 py-5 text-sm font-bold text-emerald-600">
+                                ₹{runningAmount.toLocaleString()}
+                              </td>
 
-            {/* Time */}
-            <td className="px-8 py-5 text-sm font-bold text-slate-600">
-              {new Date(bid.bidTime).toLocaleString()}
-            </td>
-          </tr>
-        );
-      });
-    })()
-  ) : (
-    <tr>
-      <td
-        colSpan="4"
-        className="px-8 py-16 text-center text-slate-400 font-bold"
-      >
-        <div className="flex flex-col items-center justify-center">
-          <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center mb-3 text-slate-300">
-            <History size={20} />
-          </div>
-          No bidding history for this round yet.
-        </div>
-      </td>
-    </tr>
-  )}
-</tbody>
+                              {/* Time */}
+                              <td className="px-8 py-5 text-sm font-bold text-slate-600">
+                                {new Date(bid.bidTime).toLocaleString()}
+                              </td>
+                            </tr>
+                          );
+                        });
+                      })()
+                    ) : (
+                      <tr>
+                        <td
+                          colSpan="4"
+                          className="px-8 py-16 text-center text-slate-400 font-bold"
+                        >
+                          <div className="flex flex-col items-center justify-center">
+                            <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center mb-3 text-slate-300">
+                              <History size={20} />
+                            </div>
+                            No bidding history for this round yet.
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
                 </table>
               </div>
             </div>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { io } from "socket.io-client";
 import {
   Trophy,
   Phone,
@@ -11,6 +12,14 @@ import {
   Timer,
   XCircle,
   Calendar,
+  Award,
+  Sparkles,
+  Users,
+  Zap,
+  TrendingUp,
+  ChevronRight,
+  Circle,
+  DollarSign,
 } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -24,6 +33,7 @@ const ParticipantBiddingPage = () => {
 
   // 🔹 Auth States
   const [mobileNumber, setMobileNumber] = useState("");
+  const [socket, setSocket] = useState(null);
   const [authStatus, setAuthStatus] = useState("LOGIN"); // LOGIN, PENDING, VERIFIED, REJECTED
   const [rejectionMessage, setRejectionMessage] = useState("");
   const [userData, setUserData] = useState(null);
@@ -57,7 +67,22 @@ const ParticipantBiddingPage = () => {
   // 🔹 API States
   const [isPlacingBid, setIsPlacingBid] = useState(false);
 
+  // 🔹 Error Popup States
+  const [errorPopup, setErrorPopup] = useState({
+    show: false,
+    message: "",
+    type: "error", // error, warning, info
+  });
+
   const percentages = [5, 4, 3, 2];
+
+  // Helper function to show error popup
+  const showError = (message, type = "error") => {
+    setErrorPopup({ show: true, message, type });
+    setTimeout(() => {
+      setErrorPopup({ show: false, message: "", type: "error" });
+    }, 3000);
+  };
 
   // Helper function to convert UTC to local date
   const convertUTCToLocal = (utcDateString) => {
@@ -98,6 +123,36 @@ const ParticipantBiddingPage = () => {
 
     return "Other Rounds";
   };
+
+  useEffect(() => {
+  if (authStatus !== "VERIFIED") return;
+
+  const newSocket = io("https://api.regeve.in", {
+    transports: ["polling", "websocket"],
+  });
+
+  newSocket.on("connect", () => {
+    console.log("PARTICIPANT CONNECTED:", newSocket.id);
+  });
+
+  setSocket(newSocket);
+
+  return () => {
+    newSocket.disconnect();
+  };
+}, [authStatus]);
+
+useEffect(() => {
+  if (!socket || !selectedRound || !userData) return;
+
+  socket.emit("join-round", {
+    roundId: selectedRound.documentId,
+    participantId: userData.documentId,
+  });
+
+  console.log("JOINED ROUND:", selectedRound.documentId);
+
+}, [socket, selectedRound, userData]);
 
   useEffect(() => {
     if (authStatus === "VERIFIED" && startTime && endTime) {
@@ -193,7 +248,7 @@ const ParticipantBiddingPage = () => {
     setEndTime(end);
 
     // Load existing bids from round history
-    if (round.Bidding_History &&round.Bidding_History.length > 0) {
+    if (round.Bidding_History && round.Bidding_History.length > 0) {
       // Sort bids by time (newest first)
       const sortedHistory = [...round.Bidding_History].sort(
         (a, b) => new Date(b.bidTime) - new Date(a.bidTime),
@@ -447,7 +502,7 @@ const ParticipantBiddingPage = () => {
     const lastBid = bids[0]; // newest bid (top of ledger)
 
     if (lastBid.bidderName === userData.name) {
-      alert("You cannot place two consecutive bids. Wait for another participant.");
+      showError("You cannot place two consecutive bids. Wait for another participant.", "warning");
       return;
     }
   }
@@ -456,14 +511,15 @@ const ParticipantBiddingPage = () => {
     const newRemaining = currentRemaining - bidAmount;
 
     if (newRemaining < 0) {
-      alert("Remaining amount too low for this bid.");
+      showError("Remaining amount too low for this bid.", "error");
       return;
     }
 
     // Check if bid would go below playAmount
     if (newRemaining < playAmount) {
-      alert(
+      showError(
         `Cannot bid below the target amount of ₹${playAmount.toLocaleString()}`,
+        "warning"
       );
       return;
     }
@@ -495,9 +551,10 @@ const ParticipantBiddingPage = () => {
       }
     } catch (error) {
       console.error("Error placing bid:", error);
-      alert(
+      showError(
         error.response?.data?.error?.message ||
           "Failed to place bid. Please try again.",
+        "error"
       );
     } finally {
       setIsPlacingBid(false);
@@ -560,19 +617,21 @@ useEffect(() => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-indigo-50/30 p-4">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-white p-8 rounded-[2rem] shadow-2xl text-center"
+          className="bg-white/80 backdrop-blur-xl p-8 rounded-[2rem] shadow-2xl text-center border border-white/50"
         >
           <div className="relative w-20 h-20 mx-auto mb-6">
-            <div className="absolute inset-0 border-4 border-slate-100 rounded-full"></div>
+            <div className="absolute inset-0 border-4 border-indigo-100 rounded-full"></div>
             <div className="absolute inset-0 border-4 border-indigo-600 rounded-full border-t-transparent animate-spin"></div>
+            <Gavel className="absolute inset-0 m-auto text-indigo-600" size={24} />
           </div>
           <h2 className="text-xl font-black text-slate-800">
             Loading Bidding Session...
           </h2>
+          <p className="text-slate-500 text-sm mt-2">Please wait while we prepare the auction room</p>
         </motion.div>
       </div>
     );
@@ -581,11 +640,11 @@ useEffect(() => {
   // 🚨 INVALID LINK VIEW
   if (!isValidRoute) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-red-50/30 p-4">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-white p-8 md:p-10 rounded-[2rem] shadow-2xl text-center max-w-md w-full border border-slate-100"
+          className="bg-white/80 backdrop-blur-xl p-8 md:p-10 rounded-[2rem] shadow-2xl text-center max-w-md w-full border border-white/50"
         >
           <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
             <AlertTriangle className="text-red-500" size={36} />
@@ -599,9 +658,9 @@ useEffect(() => {
           </p>
           <button
             onClick={() => navigate("/")}
-            className="w-full bg-slate-900 hover:bg-slate-800 transition-colors text-white px-6 py-4 rounded-xl font-bold flex items-center justify-center gap-2"
+            className="w-full bg-slate-900 hover:bg-slate-800 transition-colors text-white px-6 py-4 rounded-xl font-bold flex items-center justify-center gap-2 group"
           >
-            Return to Dashboard <ArrowRight size={18} />
+            Return to Dashboard <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
           </button>
         </motion.div>
       </div>
@@ -618,7 +677,7 @@ useEffect(() => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white p-8 md:p-10 rounded-[2rem] shadow-2xl max-w-md w-full text-center border border-white/50 relative z-10"
+          className="bg-white/80 backdrop-blur-xl p-8 md:p-10 rounded-[2rem] shadow-2xl max-w-md w-full text-center border border-white/50 relative z-10"
         >
           <AnimatePresence mode="wait">
             {authStatus === "LOGIN" && (
@@ -657,9 +716,9 @@ useEffect(() => {
                 </div>
                 <button
                   type="submit"
-                  className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 transition-all text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/25 active:scale-[0.98]"
+                  className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 transition-all text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/25 active:scale-[0.98] group"
                 >
-                  Request Entry <ArrowRight size={18} />
+                  Request Entry <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
                 </button>
               </motion.form>
             )}
@@ -706,9 +765,9 @@ useEffect(() => {
                 </p>
                 <button
                   onClick={() => setAuthStatus("LOGIN")}
-                  className="w-full bg-slate-100 hover:bg-slate-200 transition-colors text-slate-700 px-6 py-4 rounded-xl font-bold flex items-center justify-center gap-2"
+                  className="w-full bg-slate-100 hover:bg-slate-200 transition-colors text-slate-700 px-6 py-4 rounded-xl font-bold flex items-center justify-center gap-2 group"
                 >
-                  Try Again <ArrowRight size={18} />
+                  Try Again <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
                 </button>
               </motion.div>
             )}
@@ -725,39 +784,93 @@ useEffect(() => {
   // Get status text and color
   const getStatusInfo = () => {
     if (isWinnerDeclared)
-      return { text: "COMPLETED", color: "bg-purple-100 text-purple-700" };
+      return { text: "COMPLETED", color: "bg-purple-100 text-purple-700", icon: Award };
     if (biddingNotStarted)
-      return { text: "NOT STARTED", color: "bg-yellow-100 text-yellow-700" };
+      return { text: "NOT STARTED", color: "bg-yellow-100 text-yellow-700", icon: Clock };
     if (biddingActive)
-      return { text: "LIVE", color: "bg-emerald-100 text-emerald-700" };
+      return { text: "LIVE", color: "bg-emerald-100 text-emerald-700", icon: Zap };
     if (!biddingActive && timeLeft === 0)
-      return { text: "ENDED", color: "bg-slate-100 text-slate-600" };
-    return { text: "INACTIVE", color: "bg-slate-100 text-slate-600" };
+      return { text: "ENDED", color: "bg-slate-100 text-slate-600", icon: XCircle };
+    return { text: "INACTIVE", color: "bg-slate-100 text-slate-600", icon: Activity };
   };
 
   const statusInfo = getStatusInfo();
+  const StatusIcon = statusInfo.icon;
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] p-4 md:p-6 lg:p-8 font-sans pb-24 lg:pb-10">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50/20 p-4 md:p-6 lg:p-8 font-sans pb-24 lg:pb-10">
+      {/* Error Popup */}
+      <AnimatePresence>
+        {errorPopup.show && (
+          <motion.div
+            initial={{ opacity: 0, y: -50, scale: 0.3 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -50, scale: 0.3 }}
+            transition={{ type: "spring", damping: 20 }}
+            className="fixed top-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-md px-4"
+          >
+            <div className={`
+              relative overflow-hidden rounded-2xl shadow-2xl border backdrop-blur-xl
+              ${errorPopup.type === 'error' ? 'bg-red-500/90 border-red-400' : 
+                errorPopup.type === 'warning' ? 'bg-amber-500/90 border-amber-400' : 
+                'bg-blue-500/90 border-blue-400'}
+              text-white
+            `}>
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-shimmer" />
+              <div className="relative p-4 flex items-start gap-3">
+                {errorPopup.type === 'error' ? (
+                  <XCircle className="shrink-0 mt-0.5" size={20} />
+                ) : errorPopup.type === 'warning' ? (
+                  <AlertTriangle className="shrink-0 mt-0.5" size={20} />
+                ) : (
+                  <ShieldCheck className="shrink-0 mt-0.5" size={20} />
+                )}
+                <p className="flex-1 text-sm font-medium">{errorPopup.message}</p>
+                <button 
+                  onClick={() => setErrorPopup({ show: false, message: "", type: "error" })}
+                  className="shrink-0 hover:bg-white/20 rounded-lg p-1 transition-colors"
+                >
+                  <XCircle size={16} />
+                </button>
+              </div>
+              <motion.div 
+                className="absolute bottom-0 left-0 h-1 bg-white/30"
+                initial={{ width: "100%" }}
+                animate={{ width: "0%" }}
+                transition={{ duration: 3, ease: "linear" }}
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Header */}
       <header className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <div>
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+        >
           <h1 className="text-xl font-black text-slate-900 flex items-center gap-2">
-            <Gavel className="text-indigo-600" size={22} />{" "}
+            <Gavel className="text-indigo-600" size={22} /> 
             {biddingData?.nameOfBid || "Live Bidding Room"}
           </h1>
           <p className="text-slate-500 text-xs md:text-sm font-medium mt-1 flex items-center gap-2 flex-wrap">
             <span
-              className={`${statusInfo.color} px-2 py-0.5 rounded-md text-[10px] md:text-xs font-bold`}
+              className={`${statusInfo.color} px-2 py-0.5 rounded-md text-[10px] md:text-xs font-bold flex items-center gap-1`}
             >
+              <StatusIcon size={12} />
               {statusInfo.text}
             </span>
             Session: {documentId?.slice(0, 8)}... • Admin:{" "}
             {adminId?.slice(0, 8)}...
           </p>
-        </div>
-        <div className="flex items-center gap-3 bg-white px-3 py-2 rounded-xl shadow-sm border border-slate-200 w-full sm:w-auto">
-          <div className="w-7 h-7 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-700 font-bold text-xs shrink-0">
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="flex items-center gap-3 bg-white/80 backdrop-blur-sm px-3 py-2 rounded-xl shadow-sm border border-slate-200 w-full sm:w-auto"
+        >
+          <div className="w-7 h-7 bg-gradient-to-br from-indigo-500 to-violet-500 rounded-full flex items-center justify-center text-white font-bold text-xs shrink-0">
             {userData?.name?.charAt(0)?.toUpperCase() || mobileNumber.slice(-2)}
           </div>
           <span className="font-bold text-slate-700 text-sm truncate">
@@ -766,13 +879,17 @@ useEffect(() => {
           {userData?.is_verified && (
             <ShieldCheck size={14} className="text-emerald-500" />
           )}
-        </div>
+        </motion.div>
       </header>
 
       {/* Month Selector */}
       {months.length > 0 && (
-        <div className="max-w-7xl mx-auto mb-6">
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-7xl mx-auto mb-6"
+        >
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 shadow-sm border border-slate-200">
             <div className="flex items-center gap-2 mb-3">
               <Calendar size={18} className="text-indigo-600" />
               <h3 className="font-bold text-slate-700">Select Month</h3>
@@ -781,8 +898,10 @@ useEffect(() => {
             {/* Month buttons */}
             <div className="flex flex-wrap gap-2">
               {months.map((month) => (
-                <button
+                <motion.button
                   key={month}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   onClick={() => handleMonthSelect(month)}
                   className={`px-4 py-2 rounded-xl font-bold text-sm transition-all ${
                     selectedMonth === month
@@ -796,7 +915,7 @@ useEffect(() => {
                       {roundsByMonth[month].length}
                     </span>
                   )}
-                </button>
+                </motion.button>
               ))}
             </div>
 
@@ -804,14 +923,20 @@ useEffect(() => {
             {selectedMonth &&
               roundsByMonth[selectedMonth] &&
               roundsByMonth[selectedMonth].length > 1 && (
-                <div className="mt-4 pt-4 border-t border-slate-100">
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  className="mt-4 pt-4 border-t border-slate-100"
+                >
                   <h4 className="text-xs font-medium text-slate-500 mb-2">
                     Rounds in {selectedMonth}:
                   </h4>
                   <div className="flex flex-wrap gap-2">
                     {roundsByMonth[selectedMonth].map((round, index) => (
-                      <button
+                      <motion.button
                         key={round.id || index}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
                         onClick={() => loadRoundData(round)}
                         className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                           selectedRound?.id === round.id
@@ -820,21 +945,26 @@ useEffect(() => {
                         }`}
                       >
                         {round.Round_Name || `Round ${index + 1}`}
-                      </button>
+                      </motion.button>
                     ))}
                   </div>
-                </div>
+                </motion.div>
               )}
           </div>
-        </div>
+        </motion.div>
       )}
 
       <div className="max-w-7xl mx-auto space-y-6">
         {/* TOP ROW: Stats & Timer (Left) + Quick Bid Options (Right) */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Top Left: Stats & Timer */}
-          <div className="bg-slate-900 rounded-3xl p-6 md:p-8 text-white relative overflow-hidden shadow-xl shadow-slate-900/10 flex flex-col justify-between h-full">
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl p-6 md:p-8 text-white relative overflow-hidden shadow-xl shadow-slate-900/10 flex flex-col justify-between h-full"
+          >
             <div className="absolute top-[-50%] right-[-10%] w-96 h-96 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none"></div>
+            <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2260%22%20height%3D%2260%22%20viewBox%3D%220%200%2060%2060%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%3E%3Cg%20fill%3D%22%239C92AC%22%20fill-opacity%3D%220.05%22%3E%3Cpath%20d%3D%22M36%2034v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6%2034v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6%204V0H4v4H0v2h4v4h2V6h4V4H6z%22%2F%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E')] opacity-5"></div>
 
             <div className="flex flex-row items-center justify-between gap-4 relative z-10 mb-8 flex-1">
               <div>
@@ -844,13 +974,16 @@ useEffect(() => {
                 <h3 className="text-3xl md:text-4xl font-black tracking-tighter bg-gradient-to-br from-white to-slate-400 bg-clip-text text-transparent">
                   ₹{currentRemaining.toLocaleString()}
                 </h3>
-                <p className="text-xs text-slate-500 mt-2">
+                <p className="text-xs text-slate-500 mt-2 flex items-center gap-1">
+                  <Circle size={6} className="fill-slate-500" />
                   Current Round: {roundName || "No round selected"}
                 </p>
               </div>
 
               {/* Timer Block */}
-              <div
+              <motion.div
+                animate={{ scale: timeLeft < 60 ? [1, 1.05, 1] : 1 }}
+                transition={{ duration: 0.5, repeat: timeLeft < 60 ? Infinity : 0 }}
                 className={`flex flex-col items-end ${biddingNotStarted ? "text-yellow-400" : timeLeft < 60 ? "text-red-400" : "text-slate-200"}`}
               >
                 <p className="text-xs md:text-sm font-medium mb-1.5 flex items-center gap-1.5 opacity-80">
@@ -865,7 +998,7 @@ useEffect(() => {
                     {formatDateTime(startTime)} - {formatDateTime(endTime)}
                   </p>
                 )}
-              </div>
+              </motion.div>
             </div>
 
             {/* Progress Bar */}
@@ -879,94 +1012,125 @@ useEffect(() => {
                 />
               </div>
               <div className="flex justify-between text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider relative z-10">
-               
                 <span>Total: ₹{totalAmount.toLocaleString()}</span>
-               
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* Top Right: Bidding Controls */}
-          <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200 flex flex-col justify-between h-full">
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="bg-white/80 backdrop-blur-sm rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200 flex flex-col justify-between h-full"
+          >
             <div>
               <h4 className="text-base md:text-lg font-black text-slate-900 mb-5 flex items-center gap-2">
                 Quick Bid Options
                 {roundName && (
-                  <span className="text-xs font-normal bg-slate-100 text-slate-600 px-2 py-1 rounded-full">
+                  <span className="text-xs font-normal bg-slate-100 text-slate-600 px-2 py-1 rounded-full flex items-center gap-1">
+                    <Sparkles size={12} />
                     {roundName}
                   </span>
                 )}
               </h4>
               <div className="grid grid-cols-2 gap-3 mb-6">
-                {percentages.map((percent) => {
+                {percentages.map((percent, index) => {
                   const calculatedAmount = (totalAmount * percent) / 100;
                   const canAfford = currentRemaining >= calculatedAmount;
-                  // const wouldGoBelowTarget =
-                  //   currentRemaining - calculatedAmount < playAmount;
                   const isDisabled =
                     isWinnerDeclared ||
                     !selectedRound ||
                     isPlacingBid ||
                     isTimeUp ||
-                    !biddingActive || // ✅ Disable if not live
-                    biddingNotStarted || // ✅ Disable if not started
-                    currentRemaining <= 0 || // ✅ Disable if no money left
+                    !biddingActive ||
+                    biddingNotStarted ||
+                    currentRemaining <= 0 ||
                     !canAfford;
-                    //wouldGoBelowTarget;
 
                   return (
-                    <button
+                    <motion.button
                       key={percent}
+                      whileHover={!isDisabled ? { scale: 1.02, y: -2 } : {}}
+                      whileTap={!isDisabled ? { scale: 0.98 } : {}}
                       onClick={() => placeBid(percent)}
                       disabled={isDisabled}
-                      className={`relative p-4 rounded-2xl border-2 flex items-center justify-between transition-all duration-200 active:scale-95 group overflow-hidden
+                      className={`relative p-4 rounded-2xl border-2 flex items-center justify-between transition-all duration-200 group overflow-hidden
                         ${
                           !isDisabled
-                            ? "border-slate-100 hover:border-indigo-600 bg-slate-50 hover:bg-white hover:shadow-md cursor-pointer"
+                            ? "border-slate-100 hover:border-indigo-600 bg-slate-50 hover:bg-white hover:shadow-lg cursor-pointer"
                             : "border-slate-50 bg-slate-50 opacity-40 cursor-not-allowed"
                         }`}
                     >
+                      <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/0 to-indigo-500/0 group-hover:from-indigo-500/5 group-hover:to-transparent transition-all"></div>
                       <span className="text-lg md:text-2xl font-black text-slate-900 group-hover:text-indigo-600 transition-colors relative z-10">
                         ₹{calculatedAmount.toLocaleString()}
                       </span>
                       <ArrowRight
-                        className="text-slate-300 group-hover:text-indigo-600 transition-colors hidden sm:block relative z-10"
+                        className="text-slate-300 group-hover:text-indigo-600 transition-colors hidden sm:block relative z-10 group-hover:translate-x-1"
                         size={18}
                       />
-                    </button>
+                    </motion.button>
                   );
                 })}
               </div>
 
               {isPlacingBid && (
-                <p className="text-xs text-indigo-600 text-center mt-2">
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="text-xs text-indigo-600 text-center mt-2 flex items-center justify-center gap-2"
+                >
+                  <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
                   Placing bid...
-                </p>
+                </motion.p>
               )}
             </div>
-          </div>
+          </motion.div>
         </div>
 
-        {/* BOTTOM ROW: Live Ledger */}
-        <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200 h-[350px] lg:h-[400px] flex flex-col w-full">
+        {/* BOTTOM ROW: Live Ledger - Professional Design */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white/80 backdrop-blur-sm rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200 h-[400px] lg:h-[450px] flex flex-col w-full"
+        >
           <div className="flex items-center justify-between mb-4 md:mb-6 pb-4 border-b border-slate-100 shrink-0">
             <h4 className="text-base md:text-lg font-black text-slate-900 flex items-center gap-2">
-              <Clock className="text-slate-400" size={18} /> Live Ledger
+              <TrendingUp className="text-indigo-600" size={18} /> Live Auction Ledger
               {roundName && (
-                <span className="text-xs font-normal bg-slate-100 text-slate-600 px-2 py-1 rounded-full">
+                <span className="text-xs font-normal bg-indigo-50 text-indigo-600 px-2 py-1 rounded-full">
                   {roundName}
                 </span>
               )}
             </h4>
-            <span className="text-xs font-bold bg-slate-100 text-slate-600 px-3 py-1 rounded-full">
-              {bids.length} Bids
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-bold bg-slate-100 text-slate-600 px-3 py-1 rounded-full flex items-center gap-1">
+                <Users size={12} />
+                {bids.length} Bids
+              </span>
+            </div>
+          </div>
+
+          {/* Table Header */}
+          <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-slate-50 rounded-xl mb-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
+            <div className="col-span-4">Bidder</div>
+            <div className="col-span-3 text-right">Bid Amount</div>
+            <div className="col-span-3 text-right">Remaining</div>
+            <div className="col-span-2 text-right">Time</div>
           </div>
 
           <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
             {bids.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-slate-400">
-                <Activity size={36} className="mb-4 opacity-20" />
+                <motion.div
+                  animate={{ 
+                    scale: [1, 1.1, 1],
+                    rotate: [0, 5, -5, 0]
+                  }}
+                  transition={{ duration: 3, repeat: Infinity }}
+                >
+                  <Gavel size={48} className="mb-4 opacity-20" />
+                </motion.div>
                 <p className="font-medium text-sm md:text-base">
                   No activity yet
                 </p>
@@ -975,44 +1139,56 @@ useEffect(() => {
                 </p>
               </div>
             ) : (
-              <div className="flex flex-col space-y-3">
+              <div className="flex flex-col space-y-2">
                 <AnimatePresence>
                   {bids.map((bid, index) => (
                     <motion.div
                       key={bid.id}
                       initial={{ opacity: 0, y: -20, scale: 0.95 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
-                      transition={{ duration: 0.3 }}
-                      className={`p-4 rounded-2xl border w-full ${index === 0 ? "bg-indigo-50 border-indigo-100 shadow-sm" : "bg-white border-slate-100"}`}
+                      exit={{ opacity: 0, y: 20, scale: 0.95 }}
+                      transition={{ duration: 0.3, delay: index * 0.05 }}
+                      className={`grid grid-cols-12 gap-2 p-3 rounded-xl border transition-all ${
+                        index === 0 
+                          ? "bg-gradient-to-r from-indigo-50 to-indigo-50/50 border-indigo-200 shadow-sm" 
+                          : "bg-white border-slate-100 hover:border-slate-200"
+                      }`}
                     >
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="font-bold text-slate-900 text-sm md:text-base flex items-center gap-2">
-                          {index === 0 && (
-                            <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
-                          )}
+                      <div className="col-span-4 flex items-center gap-2">
+                        {index === 0 && (
+                          <motion.div
+                            animate={{ scale: [1, 1.2, 1] }}
+                            transition={{ duration: 1, repeat: Infinity }}
+                            className="w-2 h-2 rounded-full bg-indigo-500"
+                          />
+                        )}
+                        <span className={`font-bold text-sm truncate ${
+                          index === 0 ? "text-indigo-700" : "text-slate-900"
+                        }`}>
                           {bid.bidderName}
                         </span>
-                        <span className="text-[10px] md:text-xs font-bold text-slate-400">
-                          {bid.time}
+                      </div>
+                      <div className="col-span-3 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <DollarSign size={12} className="text-emerald-500" />
+                          <span className={`font-black ${
+                            index === 0 ? "text-indigo-600" : "text-emerald-600"
+                          }`}>
+                            {bid.bidAmount.toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="col-span-3 text-right">
+                        <span className={`font-medium text-sm ${
+                          index === 0 ? "text-indigo-600" : "text-slate-700"
+                        }`}>
+                          ₹{bid.remainingAmount.toLocaleString()}
                         </span>
                       </div>
-                      <div className="flex justify-between items-end">
-                        <div>
-                          <p className="text-[10px] md:text-xs text-slate-500 font-medium mb-0.5">
-                            Bid Amount
-                          </p>
-                          <p className="font-black text-indigo-600 text-sm md:text-base">
-                            ₹{bid.bidAmount.toLocaleString()}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-[10px] md:text-xs text-slate-500 font-medium mb-0.5">
-                            Remaining
-                          </p>
-                          <p className="font-bold text-slate-700 text-sm md:text-base">
-                            ₹{bid.remainingAmount.toLocaleString()}
-                          </p>
-                        </div>
+                      <div className="col-span-2 text-right">
+                        <span className="text-xs font-mono text-slate-400">
+                          {bid.time}
+                        </span>
                       </div>
                     </motion.div>
                   ))}
@@ -1020,55 +1196,119 @@ useEffect(() => {
               </div>
             )}
           </div>
-        </div>
+        </motion.div>
       </div>
 
-      {/* Winner Modal Overlay */}
+      {/* Winner Modal Overlay - Enhanced Design */}
       <AnimatePresence>
         {isWinnerDeclared && winner && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50 flex items-center justify-center p-4"
           >
             <motion.div
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 20 }}
-              className="bg-white p-8 md:p-10 rounded-[2rem] text-center max-w-sm w-full shadow-2xl relative overflow-hidden"
+              initial={{ scale: 0.9, y: 20, rotateX: -15 }}
+              animate={{ scale: 1, y: 0, rotateX: 0 }}
+              exit={{ scale: 0.9, y: 20, rotateX: -15 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="bg-gradient-to-br from-white to-indigo-50/30 p-8 md:p-10 rounded-[2rem] text-center max-w-md w-full shadow-2xl relative overflow-hidden border border-white/50"
             >
-              <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-yellow-50 to-transparent"></div>
+              {/* Animated Background Elements */}
+              <div className="absolute inset-0">
+                <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-yellow-100/50 to-transparent"></div>
+                <div className="absolute -top-20 -right-20 w-64 h-64 bg-yellow-200/20 rounded-full blur-3xl animate-pulse"></div>
+                <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-indigo-200/20 rounded-full blur-3xl animate-pulse"></div>
+              </div>
+
+              {/* Confetti Effect */}
+              {[...Array(20)].map((_, i) => (
+                <motion.div
+                  key={i}
+                  className="absolute w-2 h-2 bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-full"
+                  initial={{
+                    top: "50%",
+                    left: "50%",
+                    opacity: 1,
+                  }}
+                  animate={{
+                    top: `${Math.random() * 200 - 100}%`,
+                    left: `${Math.random() * 200 - 100}%`,
+                    opacity: 0,
+                    scale: 0,
+                  }}
+                  transition={{
+                    duration: 1.5,
+                    delay: i * 0.05,
+                    ease: "easeOut",
+                  }}
+                />
+              ))}
 
               <div className="relative z-10">
-                <div className="w-20 h-20 md:w-24 md:h-24 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
-                  <Trophy size={40} className="text-yellow-500" />
-                </div>
-                <h2 className="text-2xl md:text-3xl font-black text-slate-900 mb-1">
-                  Round Complete
-                </h2>
-                <p className="text-slate-500 font-medium mb-2 text-sm md:text-base">
-                  {roundName}
-                </p>
-                <p className="text-slate-500 font-medium mb-6 text-sm md:text-base">
-                  Winning Bidder
-                </p>
+                <motion.div
+                  animate={{ 
+                    rotate: [0, 10, -10, 0],
+                    scale: [1, 1.2, 1.2, 1]
+                  }}
+                  transition={{ duration: 1, delay: 0.3 }}
+                  className="w-24 h-24 md:w-28 md:h-28 bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl shadow-yellow-500/30"
+                >
+                  <Trophy size={48} className="text-white" />
+                </motion.div>
 
-                <div className="bg-slate-50 rounded-2xl p-6 mb-8 border border-slate-100">
-                  <p className="text-lg md:text-xl font-black text-slate-900 mb-2">
-                    {winner.bidderName}
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  <h2 className="text-3xl md:text-4xl font-black text-slate-900 mb-1 bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
+                    Round Complete!
+                  </h2>
+                  <p className="text-slate-500 font-medium mb-2 text-sm md:text-base">
+                    {roundName}
                   </p>
+                  <p className="text-slate-500 font-medium mb-6 text-sm flex items-center justify-center gap-2">
+                    <Award size={16} className="text-yellow-500" />
+                    Winning Bidder
+                  </p>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.4, type: "spring" }}
+                  className="bg-gradient-to-br from-white to-indigo-50 rounded-2xl p-6 mb-8 border border-indigo-100 shadow-lg"
+                >
+                  <motion.p 
+                    animate={{ scale: [1, 1.05, 1] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                    className="text-xl md:text-2xl font-black text-slate-900 mb-2"
+                  >
+                    {winner.bidderName}
+                  </motion.p>
                   <p className="text-xs md:text-sm text-slate-500 mb-1">
                     Final Bid Amount
                   </p>
-                  <p className="text-2xl md:text-3xl font-black text-indigo-600">
+                  <p className="text-3xl md:text-4xl font-black bg-gradient-to-r from-emerald-600 to-green-600 bg-clip-text text-transparent">
                     ₹{winner.bidAmount.toLocaleString()}
                   </p>
-                </div>
+                  <motion.div 
+                    className="mt-3 text-xs text-slate-400 flex items-center justify-center gap-1"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.6 }}
+                  >
+                    <Clock size={12} />
+                    {new Date(winner.time).toLocaleTimeString()}
+                  </motion.div>
+                </motion.div>
 
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.02, y: -2 }}
+                  whileTap={{ scale: 0.98 }}
                   onClick={() => {
-                    // Reset for next round or navigate
                     if (selectedRound) {
                       setIsWinnerDeclared(false);
                       setWinner(null);
@@ -1078,12 +1318,13 @@ useEffect(() => {
                       navigate("/");
                     }
                   }}
-                  className="w-full bg-slate-900 hover:bg-slate-800 text-white px-6 py-4 rounded-xl font-bold transition-colors"
+                  className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white px-6 py-4 rounded-xl font-bold transition-all shadow-lg shadow-indigo-500/25 group"
                 >
-                  {selectedRound
-                    ? "Continue to Next Round"
-                    : "Return to Dashboard"}
-                </button>
+                  <span className="flex items-center justify-center gap-2">
+                    {selectedRound ? "Continue to Next Round" : "Return to Dashboard"}
+                    <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                  </span>
+                </motion.button>
               </div>
             </motion.div>
           </motion.div>
@@ -1092,7 +1333,14 @@ useEffect(() => {
 
       {/* Styles */}
       <style>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; md:width: 6px; }
+        @keyframes shimmer {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+        .animate-shimmer {
+          animation: shimmer 2s infinite;
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
