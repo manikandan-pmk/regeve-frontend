@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { io } from "socket.io-client";
+import toast from "react-hot-toast"; // Run: npm install react-hot-toast
 import {
   Calendar,
   Clock,
@@ -22,6 +23,7 @@ import {
   CheckCircle2,
   History,
   Lock,
+  Trash2,
 } from "lucide-react";
 
 const API_URL = "https://api.regeve.in/api";
@@ -213,6 +215,7 @@ const AdminBiddingDashboard = () => {
   const [biddingConfig, setBiddingConfig] = useState(null);
   const [onlineParticipants, setOnlineParticipants] = useState([]);
   const [socket, setSocket] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false); // Add state for delete modal
 
   const handleCopyLink = () => {
     const participantUrl = `${window.location.origin}/#/${adminId || "admin"}/participant-bidding/${documentId}`;
@@ -236,6 +239,9 @@ const AdminBiddingDashboard = () => {
 
   const [loading, setLoading] = useState(true);
   const [apiActionLoading, setApiActionLoading] = useState(false);
+
+  const maxRounds = biddingConfig?.durationValue || 0;
+  const isMaxRoundsReached = maxRounds > 0 && rounds.length >= maxRounds;
 
   useEffect(() => {
     const newSocket = io("https://api.regeve.in", {
@@ -295,13 +301,16 @@ const AdminBiddingDashboard = () => {
   };
 
   // Fetch Rounds Data
-  const fetchRounds = async () => {
-    setLoading(true);
+  const fetchRounds = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const token = localStorage.getItem("jwt");
-      const response = await axios.get(`${API_URL}/biddings/${documentId}?populate=bidding_rounds`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await axios.get(
+        `${API_URL}/biddings/${documentId}?populate=bidding_rounds`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
 
       let dataList = response.data?.data?.bidding_rounds || [];
 
@@ -348,7 +357,60 @@ const AdminBiddingDashboard = () => {
     } catch (err) {
       console.error("Error fetching rounds:", err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
+    }
+  };
+
+  // Updated handleDeleteRound with toast notifications
+  const handleDeleteRound = async () => {
+    if (!selectedRound) return;
+
+    // Show custom delete confirmation modal (you can create a styled modal instead)
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteRound = async () => {
+    try {
+      setApiActionLoading(true);
+      const token = localStorage.getItem("jwt");
+
+      await axios.delete(
+        `${API_URL}/bidding-rounds/${selectedRound.documentId}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+
+      // Animated Success Message
+      toast.success(`${selectedRound.Round_Name} has been deleted.`, {
+        duration: 4000,
+        position: "top-center",
+        style: {
+          background: "#1e293b",
+          color: "#fff",
+          borderRadius: "16px",
+          fontWeight: "bold",
+        },
+      });
+
+      // Local State Update
+      const updatedRounds = rounds.filter(
+        (r) => r.documentId !== selectedRound.documentId,
+      );
+      setRounds(updatedRounds);
+
+      // Auto-select next available round
+      if (updatedRounds.length > 0) {
+        setSelectedRound(updatedRounds[0]);
+      } else {
+        setSelectedRound(null);
+      }
+    } catch (err) {
+      toast.error("Failed to delete round. Please try again.", {
+        duration: 4000,
+        position: "top-center",
+      });
+    } finally {
+      setApiActionLoading(false);
+      setShowDeleteModal(false);
     }
   };
 
@@ -358,6 +420,16 @@ const AdminBiddingDashboard = () => {
       fetchBiddingConfig();
     }
   }, [documentId]);
+
+  useEffect(() => {
+  if (!documentId) return;
+
+  const interval = setInterval(() => {
+    fetchRounds(true); // silent refresh
+  }, 4000); // every 4 seconds
+
+  return () => clearInterval(interval);
+}, [documentId]);
 
   // Update newRound when rounds change
   useEffect(() => {
@@ -408,7 +480,10 @@ const AdminBiddingDashboard = () => {
       !newRound.totalAmount ||
       !newRound.Final_Ratio
     ) {
-      alert("Please fill all fields");
+      toast.error("Please fill all fields", {
+        duration: 3000,
+        position: "top-center",
+      });
       return;
     }
 
@@ -447,20 +522,35 @@ const AdminBiddingDashboard = () => {
         },
       );
 
+      toast.success(`${roundData.data.Round_Name} has been created.`, {
+        duration: 4000,
+        position: "top-center",
+        style: {
+          background: "#1e293b",
+          color: "#fff",
+          borderRadius: "16px",
+          fontWeight: "bold",
+        },
+      });
+
       setShowCreateRoundModal(false);
       setNewRound({
         durationType: biddingConfig?.durationUnit || "Weekly",
-        roundNumber: rounds.length + 2, // Next round number
+        roundNumber: rounds.length + 2,
         startTime: "",
         endTime: "",
         totalAmount: biddingConfig?.amount || "",
         Final_Ratio: 40,
       });
 
-      fetchRounds(); // Refresh the list
+      fetchRounds();
     } catch (err) {
-      alert(
+      toast.error(
         `Error creating round: ${err.response?.data?.error?.message || err.message}`,
+        {
+          duration: 4000,
+          position: "top-center",
+        },
       );
     } finally {
       setApiActionLoading(false);
@@ -525,10 +615,25 @@ const AdminBiddingDashboard = () => {
         ),
       );
 
+      toast.success(`${updatedRound.Round_Name} has been updated.`, {
+        duration: 4000,
+        position: "top-center",
+        style: {
+          background: "#1e293b",
+          color: "#fff",
+          borderRadius: "16px",
+          fontWeight: "bold",
+        },
+      });
+
       setIsEditingRound(false);
     } catch (err) {
-      alert(
+      toast.error(
         `Error updating round: ${err.response?.data?.error?.message || err.message}`,
+        {
+          duration: 4000,
+          position: "top-center",
+        },
       );
     } finally {
       setApiActionLoading(false);
@@ -598,15 +703,22 @@ const AdminBiddingDashboard = () => {
             <p className="text-xs font-black text-slate-400 uppercase tracking-widest">
               Rounds ({rounds.length})
             </p>
+            {isMaxRoundsReached && (
+              <p className="text-xs text-red-500 font-bold mt-1">
+                Maximum {maxRounds} rounds reached
+              </p>
+            )}
             <button
+              disabled={isMaxRoundsReached}
               onClick={() => {
+                if (isMaxRoundsReached) return;
                 setNewRound({
                   durationType: biddingConfig?.durationUnit || "Weekly",
                   roundNumber: rounds.length + 1,
                   startTime: "",
                   endTime: "",
                   totalAmount: biddingConfig?.amount || "",
-                  Final_Ratio: 40,
+                  Final_Ratio: 0,
                 });
                 setShowCreateRoundModal(true);
               }}
@@ -710,7 +822,7 @@ const AdminBiddingDashboard = () => {
             {/* Copy Link Button */}
             <button
               onClick={handleCopyLink}
-              className="flex items-center gap-2 px-4 py-4 bg-white border border-slate-100 rounded-2xl text-slate-500 hover:text-indigo-600 hover:shadow-lg transition-all"
+              className="flex items-center cursor-pointer gap-2 px-4 py-4 bg-white border border-slate-100 rounded-2xl text-slate-500 hover:text-indigo-600 hover:shadow-lg transition-all"
               title="Copy Bidding Page Link"
             >
               {copied ? (
@@ -726,7 +838,7 @@ const AdminBiddingDashboard = () => {
             {/* Refresh Button */}
             <button
               onClick={fetchRounds}
-              className="p-4 bg-white border border-slate-100 rounded-2xl text-slate-500 hover:text-indigo-600 hover:shadow-lg transition-all"
+              className="p-4 bg-white cursor-pointer border border-slate-100 rounded-2xl text-slate-500 hover:text-indigo-600 hover:shadow-lg transition-all"
             >
               <RefreshCw size={20} />
             </button>
@@ -743,12 +855,21 @@ const AdminBiddingDashboard = () => {
                   Round Configuration
                 </h3>
                 {!isEditingRound && (
-                  <button
-                    onClick={handleEditRound}
-                    className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1.5 bg-indigo-50 px-4 py-2 rounded-xl transition-all hover:bg-indigo-100"
-                  >
-                    <Edit size={14} /> Edit Round
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={handleEditRound}
+                      className="text-xs font-bold cursor-pointer text-indigo-600 hover:text-indigo-800 flex items-center gap-1.5 bg-indigo-50 px-4 py-2 rounded-xl transition-all hover:bg-indigo-100"
+                    >
+                      <Edit size={14} /> Edit Round
+                    </button>
+
+                    <button
+                      onClick={handleDeleteRound}
+                      className="text-xs font-bold cursor-pointer text-red-600 hover:text-red-800 flex items-center gap-1.5 bg-red-50 px-4 py-2 rounded-xl transition-all hover:bg-red-100"
+                    >
+                      <X size={14} /> Delete Round
+                    </button>
+                  </div>
                 )}
               </div>
 
@@ -855,57 +976,42 @@ const AdminBiddingDashboard = () => {
                   <div className="space-y-6 animate-fade-in">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                       <div className="space-y-4">
+                        {/* Duration Type */}
                         <div>
                           <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
                             Duration Type
                           </label>
-                          <select
-                            value={editedRound?.durationType || "Weekly"}
-                            onChange={(e) =>
-                              setEditedRound({
-                                ...editedRound,
-                                durationType: e.target.value,
-                              })
-                            }
-                            className="w-full mt-1 px-4 py-3 border-2 border-slate-100 rounded-xl focus:border-indigo-500 outline-none font-bold text-slate-700 transition-all"
-                          >
-                            <option value="Weekly">Weekly</option>
-                            <option value="Monthly">Monthly</option>
-                          </select>
+
+                          <div className="w-full mt-1 px-4 py-3 border-2 border-slate-100 bg-white rounded-xl font-bold text-slate-700">
+                            {editedRound?.durationType || "—"}
+                          </div>
                         </div>
+
+                        {/* Round Number */}
                         <div>
                           <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
                             Round Number
                           </label>
-                          <input
-                            type="number"
-                            value={editedRound?.roundNumber || 1}
-                            onChange={(e) =>
-                              setEditedRound({
-                                ...editedRound,
-                                roundNumber: parseInt(e.target.value),
-                              })
-                            }
-                            className="w-full mt-1 px-4 py-3 border-2 border-slate-100 rounded-xl focus:border-indigo-500 outline-none font-bold text-slate-700 transition-all"
-                            min="1"
-                          />
+
+                          <div className="w-full mt-1 px-4 py-3 border-2 border-slate-100 bg-white rounded-xl font-bold text-slate-700">
+                            {editedRound?.roundNumber || "—"}
+                          </div>
                         </div>
+
+                        {/* Total Amount */}
                         <div>
                           <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
                             Total Amount (₹)
                           </label>
-                          <input
-                            type="number"
-                            value={editedRound?.totalAmount || 0}
-                            onChange={(e) =>
-                              setEditedRound({
-                                ...editedRound,
-                                totalAmount: parseInt(e.target.value),
-                              })
-                            }
-                            className="w-full mt-1 px-4 py-3 border-2 border-slate-100 rounded-xl focus:border-indigo-500 outline-none font-bold text-slate-700 transition-all"
-                            min="0"
-                          />
+
+                          <div className="w-full mt-1 px-4 py-3 border-2 border-slate-100 bg-white rounded-xl font-bold text-slate-700">
+                            ₹{" "}
+                            {editedRound?.totalAmount
+                              ? parseInt(
+                                  editedRound.totalAmount,
+                                ).toLocaleString()
+                              : "—"}
+                          </div>
                         </div>
                       </div>
 
@@ -1002,14 +1108,14 @@ const AdminBiddingDashboard = () => {
                     <div className="flex justify-end gap-3 pt-6 border-t border-slate-100">
                       <button
                         onClick={handleCancelEdit}
-                        className="px-6 py-3 bg-white border-2 border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 transition-colors"
+                        className="px-6 py-3 bg-white cursor-pointer border-2 border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 transition-colors"
                       >
                         Cancel
                       </button>
                       <button
                         onClick={handleSaveRound}
                         disabled={apiActionLoading}
-                        className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all flex items-center gap-2 disabled:opacity-50"
+                        className="px-6 py-3 bg-indigo-600 cursor-pointer text-white rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all flex items-center gap-2 disabled:opacity-50"
                       >
                         {apiActionLoading ? (
                           <Loader className="w-5 h-5 animate-spin" />
@@ -1121,44 +1227,57 @@ const AdminBiddingDashboard = () => {
                     {selectedRound?.Bidding_History &&
                     selectedRound.Bidding_History.length > 0 ? (
                       (() => {
-                        // 🔹 Sort bids by time (oldest first)
                         const sortedHistory = [
                           ...selectedRound.Bidding_History,
                         ].sort(
                           (a, b) => new Date(a.bidTime) - new Date(b.bidTime),
                         );
 
-                        // 🔹 Starting total amount
                         let runningAmount =
-                          parseInt(newRound?.totalAmount) || 0;
+                          calculateTotalAmount(
+                            selectedRound.playAmount,
+                            selectedRound.Final_Ratio,
+                          ) || 0;
 
                         return sortedHistory.map((bid, index) => {
                           const bidAmount = parseInt(bid.amount) || 0;
-
-                          // 🔹 Subtract from previous remaining
                           runningAmount -= bidAmount;
+
+                          const isWinner = biddingConfig?.biddingwinners?.some(
+                            (w) =>
+                              w.round === selectedRound.Round_Name &&
+                              w.winnerName === bid.name &&
+                              parseInt(w.amount) === bidAmount,
+                          );
 
                           return (
                             <tr
                               key={index}
-                              className="hover:bg-slate-50/80 transition-colors"
+                              className={`transition-colors ${
+                                isWinner
+                                  ? "bg-amber-50/50 hover:bg-amber-50"
+                                  : "hover:bg-slate-50/80"
+                              }`}
                             >
-                              {/* Bidder Name */}
                               <td className="px-8 py-5 text-sm font-black text-slate-800">
-                                {bid.name}
+                                <div className="flex items-center gap-2">
+                                  {bid.name}
+                                  {isWinner && (
+                                    <span className="flex items-center gap-1 bg-amber-100 text-amber-700 text-[10px] px-2 py-0.5 rounded-full uppercase tracking-tighter">
+                                      🏆 Winner
+                                    </span>
+                                  )}
+                                </div>
                               </td>
 
-                              {/* Bid Amount */}
                               <td className="px-8 py-5 text-sm font-bold text-indigo-600">
                                 ₹{bidAmount.toLocaleString()}
                               </td>
 
-                              {/* Remaining Amount (Running Calculation) */}
                               <td className="px-8 py-5 text-sm font-bold text-emerald-600">
                                 ₹{runningAmount.toLocaleString()}
                               </td>
 
-                              {/* Time */}
                               <td className="px-8 py-5 text-sm font-bold text-slate-600">
                                 {new Date(bid.bidTime).toLocaleString()}
                               </td>
@@ -1192,8 +1311,10 @@ const AdminBiddingDashboard = () => {
       {/* Create Round Modal */}
       {showCreateRoundModal && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-[2rem] max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
-            <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white">
+          {/* Widened to max-w-4xl, removed max-h and overflow-y-auto to prevent scrolling */}
+          <div className="bg-white rounded-[2rem] max-w-4xl w-full shadow-2xl flex flex-col">
+            {/* Header */}
+            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between rounded-t-[2rem]">
               <h2 className="text-xl font-black text-slate-800">
                 Create New Round
               </h2>
@@ -1205,162 +1326,163 @@ const AdminBiddingDashboard = () => {
               </button>
             </div>
 
-            <div className="p-8 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">
-                    Duration Type
-                  </label>
-                  <select
-                    value={newRound.durationType}
-                    onChange={(e) =>
-                      setNewRound({ ...newRound, durationType: e.target.value })
-                    }
-                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-indigo-500 outline-none font-bold text-slate-700"
-                  >
-                    <option value="Weekly">Weekly</option>
-                    <option value="Monthly">Monthly</option>
-                  </select>
-                  {biddingConfig?.durationValue && (
-                    <p className="text-xs text-slate-500 mt-1 font-bold">
-                      Duration: {biddingConfig.durationValue}{" "}
-                      {biddingConfig.durationUnit}
-                    </p>
-                  )}
+            {/* Body - Left/Right Split Layout */}
+            <div className="p-6 grid grid-cols-1 md:grid-cols-12 gap-6">
+              {/* Left Side: Form Inputs (7 Columns) */}
+              <div className="md:col-span-7 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[12px] font-black text-slate-500 uppercase tracking-widest block mb-1">
+                      Duration Type
+                    </label>
+                    <div className="w-full px-4 py-2.5 border-2 border-slate-200 bg-white rounded-xl font-bold text-slate-700 text-sm">
+                      {newRound.durationType || "—"}
+                    </div>
+                    {biddingConfig?.durationValue && (
+                      <p className="text-[12px] text-slate-500 mt-1 font-bold">
+                        Duration: {biddingConfig.durationValue}{" "}
+                        {biddingConfig.durationUnit}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="text-[12px] font-black text-slate-500 uppercase tracking-widest block mb-1">
+                      Round Number
+                    </label>
+                    <div className="w-full px-4 py-2.5 border-2 border-slate-200 bg-white rounded-xl font-bold text-slate-700 text-sm">
+                      {newRound.roundNumber || "—"}
+                    </div>
+                  </div>
                 </div>
 
-                <div>
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">
-                    Round Number
-                  </label>
-                  <input
-                    type="number"
-                    value={newRound.roundNumber}
-                    onChange={(e) =>
-                      setNewRound({
-                        ...newRound,
-                        roundNumber: parseInt(e.target.value),
-                      })
-                    }
-                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-indigo-500 outline-none font-bold text-slate-700"
-                    min="1"
-                  />
-                </div>
-              </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[12px] font-black text-slate-500 uppercase tracking-widest block mb-1">
+                      Start Time
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={newRound.startTime}
+                      onChange={(e) =>
+                        setNewRound({ ...newRound, startTime: e.target.value })
+                      }
+                      className="w-full px-4 py-2.5 border-2 border-slate-200 rounded-xl focus:border-indigo-500 outline-none font-bold text-slate-700 text-sm"
+                    />
+                  </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">
-                    Start Time
-                  </label>
-                  <input
-                    type="datetime-local"
-                    value={newRound.startTime}
-                    onChange={(e) =>
-                      setNewRound({ ...newRound, startTime: e.target.value })
-                    }
-                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-indigo-500 outline-none font-bold text-slate-700"
-                  />
+                  <div>
+                    <label className="text-[12px] font-black text-slate-500 uppercase tracking-widest block mb-1">
+                      End Time
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={newRound.endTime}
+                      onChange={(e) =>
+                        setNewRound({ ...newRound, endTime: e.target.value })
+                      }
+                      className="w-full px-4 py-2.5 border-2 border-slate-200 rounded-xl focus:border-indigo-500 outline-none font-bold text-slate-700 text-sm"
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">
-                    End Time
-                  </label>
-                  <input
-                    type="datetime-local"
-                    value={newRound.endTime}
-                    onChange={(e) =>
-                      setNewRound({ ...newRound, endTime: e.target.value })
-                    }
-                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-indigo-500 outline-none font-bold text-slate-700"
-                  />
-                </div>
-              </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[12px] font-black text-slate-500 uppercase tracking-widest block mb-1">
+                      Total Amount (₹)
+                    </label>
+                    <div className="w-full px-4 py-2.5 border-2 border-slate-200 bg-white rounded-xl font-bold text-slate-700 text-sm">
+                      ₹{" "}
+                      {newRound.totalAmount
+                        ? parseInt(newRound.totalAmount).toLocaleString()
+                        : "—"}
+                    </div>
+                    {biddingConfig?.amount && (
+                      <p className="text-[12px] text-slate-500 mt-1 font-bold">
+                        Base: ₹{parseInt(biddingConfig.amount).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">
-                    Total Amount (₹)
-                  </label>
-                  <input
-                    type="number"
-                    value={newRound.totalAmount}
-                    onChange={(e) =>
-                      setNewRound({ ...newRound, totalAmount: e.target.value })
-                    }
-                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-indigo-500 outline-none font-bold text-slate-700"
-                    min="0"
-                  />
-                  {biddingConfig?.amount && (
-                    <p className="text-xs text-slate-500 mt-1 font-bold">
-                      Base Amount: ₹
-                      {parseInt(biddingConfig.amount).toLocaleString()}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">
-                    Final Ratio (%)
-                  </label>
-                  <input
-                    type="number"
-                    value={newRound.Final_Ratio}
-                    onChange={(e) =>
-                      setNewRound({
-                        ...newRound,
-                        Final_Ratio: parseInt(e.target.value),
-                      })
-                    }
-                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-indigo-500 outline-none font-bold text-slate-700"
-                    min="0"
-                    max="100"
-                  />
+                  <div>
+                    <label className="text-[12px] font-black text-slate-500 uppercase tracking-widest block mb-1">
+                      Final Ratio (%)
+                    </label>
+                    <input
+                      type="number"
+                      value={newRound.Final_Ratio}
+                      onChange={(e) =>
+                        setNewRound({
+                          ...newRound,
+                          Final_Ratio: parseInt(e.target.value),
+                        })
+                      }
+                      className="w-full px-4 py-2.5 border-2 border-slate-200 rounded-xl focus:border-indigo-500 outline-none font-bold text-slate-700 text-sm"
+                      min="0"
+                      max="100"
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="p-6 bg-indigo-50 rounded-2xl">
-                <p className="text-sm font-bold text-indigo-700 mb-2">
-                  Preview
-                </p>
-                <p className="text-2xl font-black text-indigo-600">
-                  {newRound.durationType === "Weekly" ? "Week" : "Month"}{" "}
-                  {newRound.roundNumber}
-                </p>
-                <p className="text-sm font-bold text-indigo-500 mt-2">
-                  Final Payout: ₹
-                  {calculateReducedAmount(
-                    parseFloat(newRound.totalAmount) || 0,
-                    parseFloat(newRound.Final_Ratio) || 0,
-                  ).toLocaleString()}
-                </p>
-                <p className="text-sm font-bold text-indigo-500">
-                  Pool Amount: ₹
-                  {calculateReducedAmount(
-                    parseFloat(newRound.totalAmount) || 0,
-                    parseFloat(newRound.Final_Ratio) || 0,
-                  ).toLocaleString()}
-                </p>
+              {/* Right Side: Preview Panel (5 Columns) */}
+              <div className="md:col-span-5 flex h-full">
+                <div className="p-6 bg-indigo-50 rounded-2xl w-full flex flex-col justify-center items-center text-center">
+                  <p className="text-sm font-bold text-indigo-700 mb-2 uppercase tracking-wider">
+                    Preview
+                  </p>
+                  <p className="text-3xl font-black text-indigo-600 mb-4">
+                    {newRound.durationType === "Weekly" ? "Week" : "Month"}{" "}
+                    {newRound.roundNumber}
+                  </p>
+
+                  <div className="space-y-2 w-full max-w-xs">
+                    <div className="flex justify-between items-center bg-white/60 px-4 py-2 rounded-lg">
+                      <span className="text-md font-bold text-indigo-500">
+                        Final Payout
+                      </span>
+                      <span className="text-md font-black text-indigo-700">
+                        ₹
+                        {calculateReducedAmount(
+                          parseFloat(newRound.totalAmount) || 0,
+                          parseFloat(newRound.Final_Ratio) || 0,
+                        ).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center bg-white/60 px-4 py-2 rounded-lg">
+                      <span className="text-md font-bold text-indigo-500">
+                        Pool Amount
+                      </span>
+                      <span className="text-md font-black text-indigo-700">
+                        ₹
+                        {calculateReducedAmount(
+                          parseFloat(newRound.totalAmount) || 0,
+                          parseFloat(newRound.Final_Ratio) || 0,
+                        ).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div className="px-8 py-6 border-t border-slate-100 flex justify-end gap-3 sticky bottom-0 bg-white">
+            {/* Footer */}
+            <div className="px-6 py-5 border-t border-slate-100 flex justify-end gap-3 rounded-b-[2rem] bg-white">
               <button
                 onClick={() => setShowCreateRoundModal(false)}
-                className="px-6 py-3 bg-white border-2 border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 transition-colors"
+                className="px-6 py-2.5 bg-white border-2 border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 transition-colors text-sm"
               >
                 Cancel
               </button>
               <button
                 onClick={handleCreateRound}
                 disabled={apiActionLoading}
-                className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all flex items-center gap-2 disabled:opacity-50"
+                className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all flex items-center gap-2 disabled:opacity-50 text-sm"
               >
                 {apiActionLoading ? (
-                  <Loader className="w-5 h-5 animate-spin" />
+                  <Loader className="w-4 h-4 animate-spin" />
                 ) : (
-                  <PlusCircle size={18} />
+                  <PlusCircle size={16} />
                 )}
                 Create Round
               </button>
@@ -1369,8 +1491,65 @@ const AdminBiddingDashboard = () => {
         </div>
       )}
 
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
+          <div className="bg-white rounded-[2.5rem] max-w-md w-full shadow-[0_20px_50px_rgba(0,0,0,0.15)] overflow-hidden transform transition-all">
+            {/* Visual Indicator Section */}
+            <div className="pt-10 pb-4 flex flex-col items-center">
+              <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mb-4">
+                <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center text-red-600">
+                  <Trash2 size={28} strokeWidth={2.5} />
+                </div>
+              </div>
+              <h2 className="text-2xl font-black text-slate-800 tracking-tight">
+                Confirm Deletion
+              </h2>
+            </div>
+
+            {/* Content */}
+            <div className="px-10 pb-8 text-center">
+              <p className="text-slate-500 leading-relaxed text-lg">
+                Are you sure you want to remove <br />
+                <span className="font-extrabold text-slate-900 decoration-red-200 decoration-4 underline-offset-2">
+                  {selectedRound?.Round_Name}
+                </span>
+                ?
+              </p>
+              <p className="text-sm text-slate-400 mt-3 font-medium">
+                This process is permanent and cannot be reversed.
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="p-6 bg-slate-50/80 flex flex-col sm:flex-row gap-3">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="flex-1 order-2 sm:order-1 px-6 cursor-pointer py-4 bg-white border border-slate-200 text-slate-600 rounded-2xl font-bold hover:bg-slate-100 hover:text-slate-900 active:scale-95 transition-all outline-none focus:ring-2 focus:ring-slate-200"
+              >
+                Nevermind
+              </button>
+              <button
+                onClick={confirmDeleteRound}
+                disabled={apiActionLoading}
+                className="flex-1 order-1 sm:order-2 cursor-pointer px-6 py-4 bg-red-600 text-white rounded-2xl font-bold hover:bg-red-700 active:scale-95 shadow-lg shadow-red-200 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none"
+              >
+                {apiActionLoading ? (
+                  <Loader className="w-5 h-5 animate-spin" />
+                ) : (
+                  <>
+                    <X size={20} strokeWidth={3} />
+                    <span>Delete Round</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Global Processing State */}
-      {apiActionLoading && (
+      {apiActionLoading && !showDeleteModal && !showCreateRoundModal && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[200]">
           <div className="bg-white px-8 py-6 rounded-3xl shadow-2xl flex items-center gap-5 border border-slate-100">
             <div className="relative">

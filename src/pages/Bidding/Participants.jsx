@@ -51,9 +51,18 @@ export default function Participants() {
   };
 
   useEffect(() => {
-    if (documentId) {
+    if (!documentId) return;
+
+    // Initial fetch
+    fetchParticipants();
+
+    // Auto refresh every 5 seconds
+    const interval = setInterval(() => {
       fetchParticipants();
-    }
+    }, 5000);
+
+    // Cleanup when component unmounts
+    return () => clearInterval(interval);
   }, [documentId]);
 
   // 🔹 VERIFY PARTICIPANT

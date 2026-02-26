@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { io } from "socket.io-client";
 import {
   Trophy,
@@ -13,6 +13,9 @@ import {
   XCircle,
   Calendar,
   AlertCircle,
+  Award,
+  Medal,
+  Users,
 } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -30,9 +33,20 @@ const ParticipantBiddingPage = () => {
   const [authStatus, setAuthStatus] = useState("LOGIN"); // LOGIN, PENDING, VERIFIED, REJECTED
   const [rejectionMessage, setRejectionMessage] = useState("");
   const [userData, setUserData] = useState(null);
+  const [winnerLocked, setWinnerLocked] = useState(false);
+  
+  // 🔹 Track shown winners across sessions using localStorage
+  const [shownWinners, setShownWinners] = useState(() => {
+    const saved = localStorage.getItem(`shownWinners_${documentId}`);
+    return saved ? JSON.parse(saved) : {};
+  });
 
   // 🔹 Custom Toast State for Animated Alerts
-  const [toast, setToast] = useState({ show: false, message: "", type: "error" });
+  const [toast, setToast] = useState({
+    show: false,
+    message: "",
+    type: "error",
+  });
 
   // 🔹 Bidding Data States
   const [biddingData, setBiddingData] = useState(null);
@@ -49,21 +63,33 @@ const ParticipantBiddingPage = () => {
   const [selectedMonth, setSelectedMonth] = useState("");
   const [selectedRound, setSelectedRound] = useState(null);
 
+  // 🔹 Winners State - Store all winners from biddingwinners array
+  const [allWinners, setAllWinners] = useState([]);
+  const [currentRoundWinner, setCurrentRoundWinner] = useState(null);
+
   // 🔹 Bidding & Timer States
   const [bids, setBids] = useState([]);
   const [currentRemaining, setCurrentRemaining] = useState(0);
   const [timeLeft, setTimeLeft] = useState(0);
   const [biddingActive, setBiddingActive] = useState(false);
   const [biddingNotStarted, setBiddingNotStarted] = useState(false);
+  const winnerRoundRef = useRef(null);
 
-  // 🔹 Winner States
-  const [isWinnerDeclared, setIsWinnerDeclared] = useState(false);
+  // 🔹 Winner Modal State
+  const [showWinnerModal, setShowWinnerModal] = useState(false);
   const [winner, setWinner] = useState(null);
 
   // 🔹 API States
   const [isPlacingBid, setIsPlacingBid] = useState(false);
 
   const percentages = [5, 4, 3, 2];
+
+  // Save shown winners to localStorage whenever it changes
+  useEffect(() => {
+    if (documentId) {
+      localStorage.setItem(`shownWinners_${documentId}`, JSON.stringify(shownWinners));
+    }
+  }, [shownWinners, documentId]);
 
   // Helper function to show custom animated toast instead of alert
   const showToast = (message, type = "error") => {
@@ -78,35 +104,37 @@ const ParticipantBiddingPage = () => {
   };
 
   // Function to extract month from round name
- const extractMonthFromRoundName = (roundName) => {
-  if (!roundName) return "Other Rounds";
+  const extractMonthFromRoundName = (roundName) => {
+    if (!roundName) return "Unknown";
 
-  // Match Month 1, Month_1, etc.
-  const monthMatch = roundName.match(/month[_\s]*(\d+)/i);
-  if (monthMatch) {
-    return `Month ${monthMatch[1]}`;
-  }
-
-  // Match Week 1, Week_1, etc.
-  const weekMatch = roundName.match(/week[_\s]*(\d+)/i);
-  if (weekMatch) {
-    return `Week ${weekMatch[1]}`;
-  }
-
-  // Match actual month names
-  const monthNames = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December",
-  ];
-
-  for (const month of monthNames) {
-    if (roundName.toLowerCase().includes(month.toLowerCase())) {
-      return month;
+    const monthMatch = roundName.match(/month[_\s]*(\d+)/i);
+    if (monthMatch) {
+      return `Month ${monthMatch[1]}`;
     }
-  }
 
-  return "Other Rounds";
-};
+    const monthNames = [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
+    ];
+
+    for (const month of monthNames) {
+      if (roundName.toLowerCase().includes(month.toLowerCase())) {
+        return month;
+      }
+    }
+
+    return "Other Rounds";
+  };
 
   useEffect(() => {
     if (authStatus !== "VERIFIED") return;
@@ -161,6 +189,11 @@ const ParticipantBiddingPage = () => {
           const amount = parseInt(data.amount) || 0;
           setTotalAmount(amount);
 
+          // Store all winners from biddingwinners array
+          if (data.biddingwinners && data.biddingwinners.length > 0) {
+            setAllWinners(data.biddingwinners);
+          }
+
           if (data.bidding_rounds && data.bidding_rounds.length > 0) {
             const roundsByMonthMap = {};
 
@@ -206,6 +239,12 @@ const ParticipantBiddingPage = () => {
     fetchBiddingData();
   }, [documentId]);
 
+  // Function to find winner for a specific round
+  const findWinnerForRound = (roundName) => {
+    if (!allWinners || allWinners.length === 0) return null;
+    return allWinners.find(winner => winner.round === roundName) || null;
+  };
+
   // Function to load round data
   const loadRoundData = (round, amountOverride = null) => {
     if (!round) return;
@@ -221,15 +260,19 @@ const ParticipantBiddingPage = () => {
     setStartTime(start);
     setEndTime(end);
 
+    // Check if this round has a winner from biddingwinners
+    const roundWinner = findWinnerForRound(round.Round_Name);
+    setCurrentRoundWinner(roundWinner);
+
     if (round.Bidding_History && round.Bidding_History.length > 0) {
       const sortedHistory = [...round.Bidding_History].sort(
         (a, b) => new Date(b.bidTime) - new Date(a.bidTime),
       );
 
       const formattedBids = sortedHistory.map((bid, index) => {
-        const bidsUpToThis = round.Bidding_History
-          .filter((b) => new Date(b.bidTime) <= new Date(bid.bidTime))
-          .sort((a, b) => new Date(a.bidTime) - new Date(b.bidTime));
+        const bidsUpToThis = round.Bidding_History.filter(
+          (b) => new Date(b.bidTime) <= new Date(bid.bidTime),
+        ).sort((a, b) => new Date(a.bidTime) - new Date(b.bidTime));
 
         let remainingAtBidTime = baseAmount;
         bidsUpToThis.forEach((b) => {
@@ -246,6 +289,7 @@ const ParticipantBiddingPage = () => {
             minute: "2-digit",
             second: "2-digit",
           }),
+          isWinner: roundWinner && bid.name === roundWinner.winnerName,
         };
       });
 
@@ -256,34 +300,43 @@ const ParticipantBiddingPage = () => {
         0,
       );
       setCurrentRemaining(baseAmount - totalBidAmount);
+      setWinnerLocked(false);
     } else {
       setBids([]);
       setCurrentRemaining(baseAmount);
     }
 
-    const hasWinner = round.Bidding_History?.some((bid) => bid.winner === "yes");
-    if (hasWinner) {
-      const winningBid = round.Bidding_History.find(
-        (bid) => bid.winner === "yes",
-      );
-      if (winningBid) {
-        setWinner({
-          bidderName: winningBid.name,
-          bidAmount: parseFloat(winningBid.amount),
-          time: winningBid.bidTime,
-        });
-        setIsWinnerDeclared(true);
-        setBiddingActive(false);
-      }
-    } else {
-      setIsWinnerDeclared(false);
-      setWinner(null);
-    }
+    // Show winner modal if round has a winner and not shown before
+    if (roundWinner && !shownWinners[round.Round_Name]) {
+      // Mark this winner as shown
+      setShownWinners(prev => ({
+        ...prev,
+        [round.Round_Name]: true
+      }));
+      
+      setWinner({
+        bidderName: roundWinner.winnerName,
+        bidAmount: parseFloat(roundWinner.amount),
+        time: roundWinner.date,
+        roundName: roundWinner.round,
+        phoneNumber: roundWinner.phoneNumber,
+      });
 
+      setShowWinnerModal(true);
+      setBiddingActive(false);
+      setWinnerLocked(true);
+    }
+    
     calculateTimeLeft(start, end);
   };
 
   const handleMonthSelect = (month) => {
+    winnerRoundRef.current = null;
+    setWinnerLocked(false);
+    setShowWinnerModal(false);
+    setWinner(null);
+    setCurrentRoundWinner(null);
+
     setSelectedMonth(month);
     const monthRounds = roundsByMonth[month];
     if (monthRounds && monthRounds.length > 0) {
@@ -316,7 +369,7 @@ const ParticipantBiddingPage = () => {
   };
 
   useEffect(() => {
-    if (!startTime || !endTime || isWinnerDeclared) return;
+    if (!startTime || !endTime || showWinnerModal) return;
 
     const timer = setInterval(() => {
       calculateTimeLeft(startTime, endTime);
@@ -325,28 +378,7 @@ const ParticipantBiddingPage = () => {
     calculateTimeLeft(startTime, endTime);
 
     return () => clearInterval(timer);
-  }, [startTime, endTime, isWinnerDeclared]);
-
-  useEffect(() => {
-    if (!biddingActive || isWinnerDeclared) return;
-
-    if (timeLeft <= 0 && bids.length > 0) {
-      setBiddingActive(false);
-      declareWinner();
-    }
-  }, [timeLeft, biddingActive, bids.length, isWinnerDeclared]);
-
-  useEffect(() => {
-    if (
-      playAmount > 0 &&
-      currentRemaining <= playAmount &&
-      bids.length > 0 &&
-      !isWinnerDeclared &&
-      biddingActive
-    ) {
-      declareWinner();
-    }
-  }, [currentRemaining, playAmount, bids.length, isWinnerDeclared, biddingActive]);
+  }, [startTime, endTime, showWinnerModal]);
 
   const formatTime = (seconds) => {
     if (!seconds && seconds !== 0) return "00:00";
@@ -370,7 +402,7 @@ const ParticipantBiddingPage = () => {
 
   const formatDateTime = (date) => {
     if (!date) return "";
-    return date.toLocaleString("en-US", {
+    return new Date(date).toLocaleString("en-US", {
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
@@ -427,7 +459,9 @@ const ParticipantBiddingPage = () => {
       }
     } catch (error) {
       console.error("Verification error:", error);
-      setRejectionMessage("Unable to verify at this moment. Please try again later.");
+      setRejectionMessage(
+        "Unable to verify at this moment. Please try again later.",
+      );
       setAuthStatus("REJECTED");
     }
   };
@@ -436,7 +470,8 @@ const ParticipantBiddingPage = () => {
     if (
       biddingNotStarted ||
       isTimeUp ||
-      isWinnerDeclared ||
+      showWinnerModal ||
+      currentRoundWinner ||
       !selectedRound ||
       isPlacingBid ||
       currentRemaining <= 0
@@ -448,7 +483,9 @@ const ParticipantBiddingPage = () => {
       const lastBid = bids[0];
 
       if (lastBid.bidderName === userData.name) {
-        showToast("You cannot place two consecutive bids. Wait for another participant.");
+        showToast(
+          "You cannot place two consecutive bids. Wait for another participant.",
+        );
         return;
       }
     }
@@ -462,7 +499,9 @@ const ParticipantBiddingPage = () => {
     }
 
     if (newRemaining < playAmount) {
-      showToast(`Cannot bid below the target amount of ₹${playAmount.toLocaleString()}`);
+      showToast(
+        `Cannot bid below the target amount of ₹${playAmount.toLocaleString()}`,
+      );
       return;
     }
 
@@ -482,7 +521,10 @@ const ParticipantBiddingPage = () => {
       }
     } catch (error) {
       console.error("Error placing bid:", error);
-      showToast(error.response?.data?.error?.message || "Failed to place bid. Please try again.");
+      showToast(
+        error.response?.data?.error?.message ||
+          "Failed to place bid. Please try again.",
+      );
     } finally {
       setIsPlacingBid(false);
     }
@@ -494,14 +536,19 @@ const ParticipantBiddingPage = () => {
     try {
       const response = await axios.get(
         `https://api.regeve.in/api/biddings/public/${documentId}`,
-        { params: { populate: "*" } }
+        { params: { populate: "*" } },
       );
 
       const updatedData = response.data?.data;
       if (!updatedData) return;
 
+      // Update winners list
+      if (updatedData.biddingwinners) {
+        setAllWinners(updatedData.biddingwinners);
+      }
+
       const updatedRound = updatedData.bidding_rounds.find(
-        (r) => r.documentId === selectedRound.documentId
+        (r) => r.documentId === selectedRound.documentId,
       );
 
       if (updatedRound) {
@@ -511,30 +558,16 @@ const ParticipantBiddingPage = () => {
       console.error("Auto refresh error:", error);
     }
   };
-
+  
   useEffect(() => {
-    if (!selectedRound || isWinnerDeclared) return;
+    if (!selectedRound || showWinnerModal || currentRoundWinner) return;
 
     const interval = setInterval(() => {
       refreshRoundData();
     }, 2000);
 
     return () => clearInterval(interval);
-  }, [selectedRound, isWinnerDeclared]);
-
-  const declareWinner = async () => {
-    if (bids.length === 0 || !selectedRound) return;
-
-    const winningBid = bids[0];
-
-    try {
-      setWinner(winningBid);
-      setIsWinnerDeclared(true);
-      setBiddingActive(false);
-    } catch (error) {
-      console.error("Error declaring winner:", error);
-    }
-  };
+  }, [selectedRound, showWinnerModal, currentRoundWinner]);
 
   if (loading) {
     return (
@@ -601,10 +634,17 @@ const ParticipantBiddingPage = () => {
                 <AlertCircle size={20} />
               </div>
               <div className="flex-1">
-                <h4 className="font-bold text-slate-900 text-sm">Action Blocked</h4>
-                <p className="text-slate-500 text-xs mt-0.5 leading-relaxed">{toast.message}</p>
+                <h4 className="font-bold text-slate-900 text-sm">
+                  Action Blocked
+                </h4>
+                <p className="text-slate-500 text-xs mt-0.5 leading-relaxed">
+                  {toast.message}
+                </p>
               </div>
-              <button onClick={() => setToast({ show: false, message: '', type: '' })} className="text-slate-400 hover:text-slate-600">
+              <button
+                onClick={() => setToast({ show: false, message: "", type: "" })}
+                className="text-slate-400 hover:text-slate-600"
+              >
                 <XCircle size={18} />
               </button>
             </motion.div>
@@ -721,7 +761,7 @@ const ParticipantBiddingPage = () => {
     totalAmount > 0 ? (currentRemaining / totalAmount) * 100 : 0;
 
   const getStatusInfo = () => {
-    if (isWinnerDeclared)
+    if (currentRoundWinner)
       return { text: "COMPLETED", color: "bg-purple-100 text-purple-700" };
     if (biddingNotStarted)
       return { text: "NOT STARTED", color: "bg-yellow-100 text-yellow-700" };
@@ -749,10 +789,17 @@ const ParticipantBiddingPage = () => {
               <AlertCircle size={20} />
             </div>
             <div className="flex-1">
-              <h4 className="font-bold text-slate-900 text-sm">Wait a moment</h4>
-              <p className="text-slate-500 text-xs mt-0.5 leading-relaxed">{toast.message}</p>
+              <h4 className="font-bold text-slate-900 text-sm">
+                Wait a moment
+              </h4>
+              <p className="text-slate-500 text-xs mt-0.5 leading-relaxed">
+                {toast.message}
+              </p>
             </div>
-            <button onClick={() => setToast({ show: false, message: '', type: '' })} className="text-slate-400 hover:text-slate-600">
+            <button
+              onClick={() => setToast({ show: false, message: "", type: "" })}
+              className="text-slate-400 hover:text-slate-600"
+            >
               <XCircle size={18} />
             </button>
           </motion.div>
@@ -772,8 +819,8 @@ const ParticipantBiddingPage = () => {
             >
               {statusInfo.text}
             </span>
-           
-            
+            Session: {documentId?.slice(0, 8)}... • Admin:{" "}
+            {adminId?.slice(0, 8)}...
           </p>
         </div>
         <div className="flex items-center gap-3 bg-white px-3 py-2 rounded-xl shadow-sm border border-slate-200 w-full sm:w-auto">
@@ -795,7 +842,7 @@ const ParticipantBiddingPage = () => {
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
             <div className="flex items-center gap-2 mb-3">
               <Calendar size={18} className="text-indigo-600" />
-              <h3 className="font-bold text-slate-700">Select {biddingData?.durationUnit === "Weekly" ? "Week" : "Month"}</h3>
+              <h3 className="font-bold text-slate-700">Select Month</h3>
             </div>
 
             <div className="flex flex-wrap gap-2">
@@ -827,19 +874,28 @@ const ParticipantBiddingPage = () => {
                     Rounds in {selectedMonth}:
                   </h4>
                   <div className="flex flex-wrap gap-2">
-                    {roundsByMonth[selectedMonth].map((round, index) => (
-                      <button
-                        key={round.id || index}
-                        onClick={() => loadRoundData(round)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                          selectedRound?.id === round.id
-                            ? "bg-indigo-100 text-indigo-700 border-2 border-indigo-200"
-                            : "bg-slate-50 text-slate-600 hover:bg-slate-100 border-2 border-transparent"
-                        }`}
-                      >
-                        {round.Round_Name || `Round ${index + 1}`}
-                      </button>
-                    ))}
+                    {roundsByMonth[selectedMonth].map((round, index) => {
+                      const hasWinner = allWinners.some(w => w.round === round.Round_Name);
+                      return (
+                        <button
+                          key={round.id || index}
+                          onClick={() => loadRoundData(round)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5
+                            ${
+                              selectedRound?.id === round.id
+                                ? hasWinner
+                                  ? "bg-purple-100 text-purple-700 border-2 border-purple-200"
+                                  : "bg-indigo-100 text-indigo-700 border-2 border-indigo-200"
+                                : hasWinner
+                                  ? "bg-purple-50 text-purple-600 hover:bg-purple-100 border-2 border-transparent"
+                                  : "bg-slate-50 text-slate-600 hover:bg-slate-100 border-2 border-transparent"
+                            }`}
+                        >
+                          {round.Round_Name || `Round ${index + 1}`}
+                          {hasWinner && <Trophy size={12} className="text-purple-500" />}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -915,7 +971,7 @@ const ParticipantBiddingPage = () => {
                   const calculatedAmount = (totalAmount * percent) / 100;
                   const canAfford = currentRemaining >= calculatedAmount;
                   const isDisabled =
-                    isWinnerDeclared ||
+                    currentRoundWinner ||
                     !selectedRound ||
                     isPlacingBid ||
                     isTimeUp ||
@@ -957,17 +1013,25 @@ const ParticipantBiddingPage = () => {
           </div>
         </div>
 
-        {/* BOTTOM ROW: Upgraded Live Ledger */}
+        {/* BOTTOM ROW: Live Ledger with Winner Indicator */}
         <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200 h-[450px] lg:h-[500px] flex flex-col w-full">
           <div className="flex items-center justify-between mb-4 md:mb-6 pb-4 border-b border-slate-100 shrink-0">
-            <h4 className="text-base md:text-lg font-black text-slate-900 flex items-center gap-2">
-              <Clock className="text-indigo-500" size={20} /> Live Ledger
-              {roundName && (
-                <span className="text-xs font-normal bg-slate-100 text-slate-600 px-2 py-1 rounded-full">
-                  {roundName}
-                </span>
+            <div className="flex items-center gap-3">
+              <h4 className="text-base md:text-lg font-black text-slate-900 flex items-center gap-2">
+                <Clock className="text-indigo-500" size={20} /> Live Ledger
+                {roundName && (
+                  <span className="text-xs font-normal bg-slate-100 text-slate-600 px-2 py-1 rounded-full">
+                    {roundName}
+                  </span>
+                )}
+              </h4>
+              {currentRoundWinner && (
+                <div className="flex items-center gap-1.5 bg-purple-50 text-green-700 px-3 py-1.5 rounded-full border border-purple-200">
+                  <Medal size={14} />
+                  <span className="text-xs font-bold">Winner: {currentRoundWinner.winnerName}</span>
+                </div>
               )}
-            </h4>
+            </div>
             <span className="text-xs font-bold bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-full border border-indigo-100">
               {bids.length} Total Bids
             </span>
@@ -993,24 +1057,42 @@ const ParticipantBiddingPage = () => {
                       initial={{ opacity: 0, y: -20, scale: 0.95 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       transition={{ duration: 0.3 }}
-                      className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow relative overflow-hidden ${
-                        index === 0 ? "border-indigo-100 ring-1 ring-indigo-50" : ""
+                      className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white border rounded-2xl shadow-sm hover:shadow-md transition-shadow relative overflow-hidden ${
+                        bid.isWinner
+                          ? "border-purple-300 bg-purple-50/50 ring-2 ring-purple-200"
+                          : index === 0
+                          ? "border-indigo-100 ring-1 ring-indigo-50"
+                          : "border-slate-100"
                       }`}
                     >
-                      {index === 0 && (
+                      {index === 0 && !bid.isWinner && (
                         <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.8)]"></div>
                       )}
-                      
+                      {bid.isWinner && (
+                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.8)]"></div>
+                      )}
+
                       <div className="flex items-center gap-4 mb-3 sm:mb-0 ml-1">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold shadow-inner ${
-                          index === 0 ? "bg-gradient-to-br from-indigo-500 to-violet-600 text-white" : "bg-slate-100 text-slate-600"
-                        }`}>
+                        <div
+                          className={`w-10 h-10 rounded-full flex items-center justify-center font-bold shadow-inner ${
+                            bid.isWinner
+                              ? "bg-gradient-to-br from-purple-500 to-purple-600 text-white"
+                              : index === 0
+                              ? "bg-gradient-to-br from-indigo-500 to-violet-600 text-white"
+                              : "bg-slate-100 text-slate-600"
+                          }`}
+                        >
                           {bid.bidderName.charAt(0).toUpperCase()}
                         </div>
                         <div>
                           <p className="font-bold text-slate-900 text-sm md:text-base flex items-center gap-2">
                             {bid.bidderName}
-                            {index === 0 && (
+                            {bid.isWinner && (
+                              <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 text-[10px] font-black uppercase tracking-wider border border-purple-200 flex items-center gap-1">
+                                <Trophy size={10} /> Winner
+                              </span>
+                            )}
+                            {index === 0 && !bid.isWinner && (
                               <span className="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-black uppercase tracking-wider animate-pulse border border-indigo-100">
                                 Latest
                               </span>
@@ -1027,13 +1109,15 @@ const ParticipantBiddingPage = () => {
                           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-0.5">
                             Bid Amount
                           </p>
-                          <p className="font-black text-indigo-600 text-base md:text-lg">
+                          <p className={`font-black text-base md:text-lg ${
+                            bid.isWinner ? "text-purple-600" : "text-indigo-600"
+                          }`}>
                             ₹{bid.bidAmount.toLocaleString()}
                           </p>
                         </div>
-                        
+
                         <div className="w-px h-8 bg-slate-200 hidden sm:block"></div>
-                        
+
                         <div className="text-right">
                           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-0.5">
                             Remaining
@@ -1050,11 +1134,13 @@ const ParticipantBiddingPage = () => {
             )}
           </div>
         </div>
+
+      
       </div>
 
-      {/* 🌟 PREMIUM WINNER MODAL UPGRADE 🌟 */}
+      {/* 🌟 WINNER MODAL 🌟 */}
       <AnimatePresence>
-        {isWinnerDeclared && winner && (
+        {showWinnerModal && winner && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -1085,19 +1171,22 @@ const ParticipantBiddingPage = () => {
                   Round Winner!
                 </h2>
                 <p className="text-slate-400 font-medium mb-8 text-sm md:text-base bg-slate-800/50 inline-block px-4 py-1.5 rounded-full border border-slate-700">
-                  {roundName}
+                  {winner.roundName}
                 </p>
 
                 <div className="bg-slate-800/80 backdrop-blur-md rounded-2xl p-6 mb-8 border border-slate-700 shadow-inner">
                   <p className="text-xs md:text-sm text-slate-400 mb-1 uppercase tracking-widest font-bold">
                     Winning Bidder
                   </p>
-                  <p className="text-xl md:text-2xl font-black text-white mb-4">
+                  <p className="text-xl md:text-2xl font-black text-white mb-2">
                     {winner.bidderName}
                   </p>
-                  
+                  <p className="text-sm text-slate-400 mb-4">
+                    {winner.phoneNumber}
+                  </p>
+
                   <div className="w-full h-px bg-slate-700 mb-4"></div>
-                  
+
                   <p className="text-xs md:text-sm text-slate-400 mb-1 uppercase tracking-widest font-bold">
                     Final Bid Amount
                   </p>
@@ -1108,18 +1197,12 @@ const ParticipantBiddingPage = () => {
 
                 <button
                   onClick={() => {
-                    if (selectedRound) {
-                      setIsWinnerDeclared(false);
-                      setWinner(null);
-                      setBids([]);
-                      setCurrentRemaining(totalAmount);
-                    } else {
-                      navigate("/");
-                    }
+                    setShowWinnerModal(false);
+                    setWinner(null);
                   }}
                   className="w-full bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white px-6 py-4 rounded-xl font-bold transition-all shadow-lg shadow-indigo-500/25 active:scale-95"
                 >
-                  {selectedRound ? "Continue to Next Round" : "Return to Dashboard"}
+                  Close
                 </button>
               </div>
             </motion.div>

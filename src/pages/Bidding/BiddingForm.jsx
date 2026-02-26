@@ -11,6 +11,8 @@ const BiddingForm = () => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
   const [realBiddingId, setRealBiddingId] = useState(null);
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [candidateInfo, setCandidateInfo] = useState(null);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -31,7 +33,6 @@ const BiddingForm = () => {
         );
 
         const result = response.data;
-       
 
         if (result && result.data) {
           setRealBiddingId(result.data.id);
@@ -50,6 +51,17 @@ const BiddingForm = () => {
 
     fetchBiddingDetails();
   }, [documentId]); // ✅ fixed
+
+  // 🔹 AUTO-HIDE SUCCESS POPUP AFTER 5 SECONDS
+  useEffect(() => {
+    if (showSuccessPopup) {
+      const timer = setTimeout(() => {
+        setShowSuccessPopup(false);
+        setCandidateInfo(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [showSuccessPopup]);
 
   // 🔹 EARLY RETURN FOR INVALID LINK
   if (!documentId) {
@@ -124,11 +136,24 @@ const BiddingForm = () => {
       const result = response.data;
       console.log("API Response:", result);
 
-      // ✅ Success
+      // ✅ Success - Show both message and popup
+      const successMessage = `Registration successful! Your Candidate ID is ${result.data.candidateid}`;
+
       setMessage({
         type: "success",
-        text: `Registration successful! Your Candidate ID is ${result.data.candidateid}`,
+        text: successMessage,
       });
+
+      // Set candidate info for popup
+      setCandidateInfo({
+        name: formData.name,
+        candidateId: result.data.candidateid,
+        biddingName: biddingName,
+      });
+
+      // Show success popup
+      setShowSuccessPopup(true);
+
       console.log("Submitting with ID:", realBiddingId);
 
       // Reset form
@@ -162,8 +187,78 @@ const BiddingForm = () => {
     }
   };
 
+  const closePopup = () => {
+    setShowSuccessPopup(false);
+    setCandidateInfo(null);
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 py-12 px-4 sm:px-6 lg:px-8 flex items-center justify-center font-sans selection:bg-indigo-100 selection:text-indigo-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 py-12 px-4 sm:px-6 lg:px-8 flex items-center justify-center font-sans selection:bg-indigo-100 selection:text-indigo-900 relative">
+      {/* 🔹 SUCCESS POPUP ANIMATION */}
+      {/* 🔹 SUCCESS POPUP UI/UX */}
+      {/* 🔹 MINIMALIST SUCCESS POPUP */}
+      {showSuccessPopup && candidateInfo && (
+        <div className="fixed inset-0 flex items-center justify-center z-[100] px-4 animate-fade-in">
+          {/* Ultra-dark backdrop to make the ID pop */}
+          <div
+            className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"
+            onClick={closePopup}
+          ></div>
+
+          {/* Popup Card */}
+          <div className="relative bg-white rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden transform animate-pop-in">
+            {/* Success Indicator */}
+            <div className="pt-8 pb-4 text-center">
+              <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg
+                  className="w-8 h-8 text-emerald-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={3}
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-slate-500 text-xs font-black uppercase tracking-[0.2em]">
+                Registration Successful
+              </h3>
+            </div>
+
+            {/* Candidate ID Display */}
+            <div className="px-8 pb-10">
+              <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center">
+                <p className="text-slate-400 text-xs font-bold uppercase mb-2">
+                  Your Candidate ID
+                </p>
+                <div className="text-4xl font-black text-indigo-600 tracking-tight">
+                  {candidateInfo.candidateId}
+                </div>
+              </div>
+
+              <p className="text-center text-slate-500 text-sm mt-6 font-medium">
+                Welcome,{" "}
+                <span className="text-slate-900 font-bold">
+                  {candidateInfo.name}
+                </span>
+              </p>
+
+              <button
+                onClick={closePopup}
+                className="w-full mt-8 py-4 bg-slate-900 hover:bg-indigo-600 text-white font-bold rounded-xl transition-all active:scale-95 shadow-lg shadow-slate-200"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🔹 MAIN FORM (existing code) */}
       <div className="max-w-xl w-full bg-white rounded-3xl shadow-2xl shadow-slate-300/50 overflow-hidden border border-white">
         {/* 🔹 HEADER SECTION */}
         <div className="bg-slate-900 px-8 py-12 text-center relative overflow-hidden">
@@ -346,6 +441,37 @@ const BiddingForm = () => {
           </div>
         </form>
       </div>
+
+      {/* 🔹 ADD CUSTOM CSS ANIMATIONS */}
+      <style jsx>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+
+        @keyframes popIn {
+          0% {
+            opacity: 0;
+            transform: scale(0.9) translateY(20px);
+          }
+          100% {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+          }
+        }
+
+        .animate-fade-in {
+          animation: fadeIn 0.2s ease-out forwards;
+        }
+
+        .animate-pop-in {
+          animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+      `}</style>
     </div>
   );
 };

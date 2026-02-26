@@ -174,13 +174,13 @@ const HeroSection = () => {
       </div>
 
       {/* --- 3. Minimal Footer Controls --- */}
-      <div className="relative z-20 w-full px-6 py-6 lg:py-8 border-t border-white/10 bg-black/20 backdrop-blur-sm lg:border-none lg:bg-transparent lg:absolute lg:bottom-0">
+      <div className="relative z-20 w-full px-6 py-6 lg:py-8 border-t border-white/10 bg-black/20  lg:border-none lg:bg-transparent lg:absolute lg:bottom-0">
         <div className="container mx-auto flex items-center justify-between">
           
           {/* Slide Counter */}
-          <div className="text-xs lg:text-sm font-mono text-white/60">
+          {/* <div className="text-xs lg:text-sm font-mono text-white/60">
             <span className="text-white font-bold">0{currentSlide + 1}</span> / 0{slides.length}
-          </div>
+          </div> */}
 
           {/* Progress Lines - Hidden on very small screens if needed, or scaled */}
           <div className="flex gap-2 lg:gap-3">

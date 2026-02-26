@@ -462,7 +462,7 @@ function BiddingCard({ data, index, onClick, onEdit, onDelete }) {
         <div className="flex justify-between items-end">
           <div>
             <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tight mb-1">
-              Available Pool
+              Total Amount
             </p>
             <div className="flex items-center gap-1.5">
               <span className="text-2xl font-black text-slate-900">
@@ -470,9 +470,7 @@ function BiddingCard({ data, index, onClick, onEdit, onDelete }) {
               </span>
             </div>
           </div>
-          <p className="text-[10px] font-medium text-slate-400">
-            REF: {biddingid || "CH-0000"}
-          </p>
+          
         </div>
       </div>
 
@@ -859,7 +857,7 @@ function CreateOrEditBiddingModal({ onClose, onSuccess, existingData }) {
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-4 px-6 rounded-2xl bg-white border border-slate-200 text-slate-600 font-black hover:bg-slate-100 transition-all"
+              className="flex-1 py-4 px-6 cursor-pointer hover:bg-red-500 hover:text-white rounded-2xl bg-white border border-slate-200 text-slate-600 font-black  transition-all"
             >
               Cancel
             </button>
@@ -867,10 +865,10 @@ function CreateOrEditBiddingModal({ onClose, onSuccess, existingData }) {
               type="submit"
               form="bidding-form"
               disabled={isSubmitting}
-              className="flex-[2] py-4 px-6 rounded-2xl bg-slate-900 text-white font-black hover:bg-indigo-600 shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 transition-all"
+              className="flex-[2] py-4 px-6 rounded-2xl cursor-pointer bg-slate-900 text-white font-black hover:bg-indigo-600 shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 transition-all"
             >
               {isSubmitting ? (
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <div className="w-5 h-5 border-2  border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 <>
                   <CheckCircle2 size={20} />
@@ -958,7 +956,7 @@ function SingleBiddingAdminPage({ bid, onBack, adminId, navigate }) {
           </div>
           <div className="text-right">
             <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">
-              Current Pool
+              Total Amount
             </p>
             <p className="text-4xl font-black text-indigo-600 tracking-tighter">
               ₹{parseInt(bid.amount || 0).toLocaleString()}
@@ -980,7 +978,7 @@ function SingleBiddingAdminPage({ bid, onBack, adminId, navigate }) {
             onClick={() =>
               navigate(`/${adminId}/admin-bidding-dashboard/${bid.documentId}`)
             }
-            className="cursor-pointer px-8 py-3 bg-white border-2 border-slate-100 text-slate-700 rounded-2xl font-bold hover:bg-slate-50 transition-all"
+            className="cursor-pointer px-8 py-3 bg-slate-200 border-2 border-slate-500  text-slate-700 rounded-2xl font-bold hover:bg-slate-50 transition-all"
           >
             Open Admin Panel
           </button>
