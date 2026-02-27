@@ -967,7 +967,7 @@ function SingleBiddingAdminPage({ bid, onBack, adminId, navigate }) {
           <button
             onClick={() =>
               navigate(
-                `/${adminId}/bidding-dashboard/${bid.documentId}/participants`
+                `/${adminId}/bidding-participants/${bid.documentId}`
               )
             }
             className="cursor-pointer px-8 py-3 bg-slate-900 text-white rounded-2xl font-bold hover:bg-indigo-600 transition-all shadow-lg shadow-slate-200"

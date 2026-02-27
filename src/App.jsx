@@ -45,9 +45,9 @@ import LuckyDrawDashboard from "./pages/LuckyDraw/LuckyDrawDashboard";
 import ParticipantDetailsPage from "./pages/LuckyDraw/ParticipantDetailsPage";
 
 // Bedding
-import BiddingDashboard from "./pages/Bidding/BiddingDashboard";
+import BiddingDashboard from "./pages/Bidding/BiddingDashboardHome";
 import BiddingForm from "./pages/Bidding/BiddingForm";
-import Participants from "./pages/Bidding/Participants";
+import Participants from "./pages/Bidding/ParticipantsDashboard";
 import AdminBiddingDashboard from "./pages/Bidding/AdminBiddingDashboard";
 import ParticipantBiddingPage from "./pages/Bidding/ParticipantBiddingPage";
 
@@ -79,14 +79,13 @@ export default function App() {
     location.pathname.endsWith("/admindashboard") ||
     location.pathname.includes("/votingpage/") ||
     location.pathname.includes("/LuckyDrawHome") ||
-    // bedding dashbord
-    location.pathname.includes("/bidding-dashboard") ||
-    location.pathname.includes("/bid/") ||
-    location.pathname.includes("/bidding/round/") ||
     location.pathname.includes("/participant-page/") ||
+    // bidding dashbord
+    location.pathname.includes("/bidding-dashboard") ||
+    location.pathname.includes("/bid-partcipant-form/") ||
     location.pathname.includes("/admin-bidding-dashboard/") ||
-    location.pathname.includes("/bidding-auction") ||
-    location.pathname.includes("/participant-bidding") ;
+    location.pathname.includes("/bidding-participants/") ||
+    location.pathname.includes("/participant-bidding");
 
   return (
     <div className="max-w-full overflow-x-hidden">
@@ -185,7 +184,10 @@ export default function App() {
         {/* ================= FALLBACK ================= */}
         <Route path="/" element={<Home />} />
         {/* Bidding */}
-        <Route path="/:adminId/bid/:documentId" element={<BiddingForm />} />
+        <Route
+          path="/:adminId/bid-partcipant-form/:documentId"
+          element={<BiddingForm />}
+        />
         <Route
           path="/:adminId/bidding-dashboard"
           element={<BiddingDashboard />}
@@ -195,13 +197,15 @@ export default function App() {
           element={<BiddingDashboard />}
         />
         <Route
-          path="/:adminId/bidding-dashboard/:documentId/participants"
+          path="/:adminId/bidding-participants/:documentId"
           element={<Participants />}
         />
 
-        <Route path="/:adminId/participant-bidding/:documentId" element={<ParticipantBiddingPage />}/>
-       
-        
+        <Route
+          path="/:adminId/participant-bidding/:documentId"
+          element={<ParticipantBiddingPage />}
+        />
+
         <Route
           path="/:adminId/admin-bidding-dashboard/:documentId"
           element={<AdminBiddingDashboard />}

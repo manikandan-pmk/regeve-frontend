@@ -105,12 +105,17 @@ const ParticipantBiddingPage = () => {
 
   // Function to extract month from round name
   const extractMonthFromRoundName = (roundName) => {
-    if (!roundName) return "Unknown";
+     if (!roundName) return "Other Rounds";
 
-    const monthMatch = roundName.match(/month[_\s]*(\d+)/i);
-    if (monthMatch) {
-      return `Month ${monthMatch[1]}`;
-    }
+   const monthMatch = roundName.match(/month[_\s]*(\d+)/i);
+  if (monthMatch) {
+    return `Month ${monthMatch[1]}`;
+  }
+
+    const weekMatch = roundName.match(/week[_\s]*(\d+)/i);
+  if (weekMatch) {
+    return `Week ${weekMatch[1]}`;
+  }
 
     const monthNames = [
       "January",
@@ -696,7 +701,7 @@ const ParticipantBiddingPage = () => {
                 </div>
                 <button
                   type="submit"
-                  className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 transition-all text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/25 active:scale-[0.98]"
+                  className="w-full cursor-pointer bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 transition-all text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/25 active:scale-[0.98]"
                 >
                   Request Entry <ArrowRight size={18} />
                 </button>
@@ -745,7 +750,7 @@ const ParticipantBiddingPage = () => {
                 </p>
                 <button
                   onClick={() => setAuthStatus("LOGIN")}
-                  className="w-full bg-slate-100 hover:bg-slate-200 transition-colors text-slate-700 px-6 py-4 rounded-xl font-bold flex items-center justify-center gap-2"
+                  className="w-full cursor-pointer bg-slate-100 hover:bg-slate-200 transition-colors text-slate-700 px-6 py-4 rounded-xl font-bold flex items-center justify-center gap-2"
                 >
                   Try Again <ArrowRight size={18} />
                 </button>
@@ -819,8 +824,7 @@ const ParticipantBiddingPage = () => {
             >
               {statusInfo.text}
             </span>
-            Session: {documentId?.slice(0, 8)}... • Admin:{" "}
-            {adminId?.slice(0, 8)}...
+           
           </p>
         </div>
         <div className="flex items-center gap-3 bg-white px-3 py-2 rounded-xl shadow-sm border border-slate-200 w-full sm:w-auto">
@@ -842,7 +846,7 @@ const ParticipantBiddingPage = () => {
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
             <div className="flex items-center gap-2 mb-3">
               <Calendar size={18} className="text-indigo-600" />
-              <h3 className="font-bold text-slate-700">Select Month</h3>
+              <h3 className="font-bold text-slate-700">Select {biddingData?.durationUnit === "Weekly" ? "Week" : "Month"}</h3>
             </div>
 
             <div className="flex flex-wrap gap-2">
@@ -985,7 +989,7 @@ const ParticipantBiddingPage = () => {
                       key={percent}
                       onClick={() => placeBid(percent)}
                       disabled={isDisabled}
-                      className={`relative p-4 rounded-2xl border-2 flex items-center justify-between transition-all duration-200 active:scale-95 group overflow-hidden
+                      className={`relative  p-4 rounded-2xl border-2 flex items-center justify-between transition-all duration-200 active:scale-95 group overflow-hidden
                         ${
                           !isDisabled
                             ? "border-slate-100 hover:border-indigo-600 bg-slate-50 hover:bg-white hover:shadow-md cursor-pointer"
@@ -1200,7 +1204,7 @@ const ParticipantBiddingPage = () => {
                     setShowWinnerModal(false);
                     setWinner(null);
                   }}
-                  className="w-full bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white px-6 py-4 rounded-xl font-bold transition-all shadow-lg shadow-indigo-500/25 active:scale-95"
+                  className="w-full cursor-pointer bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white px-6 py-4 rounded-xl font-bold transition-all shadow-lg shadow-indigo-500/25 active:scale-95"
                 >
                   Close
                 </button>

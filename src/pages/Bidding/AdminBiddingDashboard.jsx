@@ -422,14 +422,14 @@ const AdminBiddingDashboard = () => {
   }, [documentId]);
 
   useEffect(() => {
-  if (!documentId) return;
+    if (!documentId) return;
 
-  const interval = setInterval(() => {
-    fetchRounds(true); // silent refresh
-  }, 4000); // every 4 seconds
+    const interval = setInterval(() => {
+      fetchRounds(true); // silent refresh
+    }, 4000); // every 4 seconds
 
-  return () => clearInterval(interval);
-}, [documentId]);
+    return () => clearInterval(interval);
+  }, [documentId]);
 
   // Update newRound when rounds change
   useEffect(() => {
@@ -722,7 +722,7 @@ const AdminBiddingDashboard = () => {
                 });
                 setShowCreateRoundModal(true);
               }}
-              className="p-2 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-colors"
+              className="p-2 cursor-pointer bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-colors"
               title="Create New Round"
             >
               <PlusCircle size={18} />
@@ -740,7 +740,7 @@ const AdminBiddingDashboard = () => {
                 <button
                   key={round.documentId}
                   onClick={() => setSelectedRound(round)}
-                  className={`w-full flex items-center justify-between px-5 py-4 rounded-2xl font-bold transition-all duration-300 ${
+                  className={`w-full cursor-pointer flex items-center justify-between px-5 py-4 rounded-2xl font-bold transition-all duration-300 ${
                     isSelected
                       ? "bg-indigo-600 text-white shadow-xl shadow-indigo-100 transform translate-x-2"
                       : "bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-indigo-600 hover:translate-x-1 border border-slate-100"
@@ -837,7 +837,12 @@ const AdminBiddingDashboard = () => {
 
             {/* Refresh Button */}
             <button
-              onClick={fetchRounds}
+              onClick={() => {
+                window.location.reload();
+                fetchRounds();
+              }}
+              
+              
               className="p-4 bg-white cursor-pointer border border-slate-100 rounded-2xl text-slate-500 hover:text-indigo-600 hover:shadow-lg transition-all"
             >
               <RefreshCw size={20} />
@@ -1227,27 +1232,42 @@ const AdminBiddingDashboard = () => {
                     {selectedRound?.Bidding_History &&
                     selectedRound.Bidding_History.length > 0 ? (
                       (() => {
-                        const sortedHistory = [
-                          ...selectedRound.Bidding_History,
-                        ].sort(
+                        const history = selectedRound.Bidding_History || [];
+
+                        // 1️⃣ Sort oldest first (for correct calculation)
+                        const sortedOldestFirst = [...history].sort(
                           (a, b) => new Date(a.bidTime) - new Date(b.bidTime),
                         );
 
-                        let runningAmount =
+                        const totalAmount =
                           calculateTotalAmount(
                             selectedRound.playAmount,
                             selectedRound.Final_Ratio,
                           ) || 0;
 
-                        return sortedHistory.map((bid, index) => {
+                        let runningAmount = totalAmount;
+
+                        // 2️⃣ Calculate remaining for each bid
+                        const processed = sortedOldestFirst.map((bid) => {
                           const bidAmount = parseInt(bid.amount) || 0;
                           runningAmount -= bidAmount;
 
+                          return {
+                            ...bid,
+                            bidAmount,
+                            remainingAmount: runningAmount,
+                          };
+                        });
+
+                        // 3️⃣ Reverse so latest shows first
+                        const latestFirst = processed.reverse();
+
+                        return latestFirst.map((bid, index) => {
                           const isWinner = biddingConfig?.biddingwinners?.some(
                             (w) =>
                               w.round === selectedRound.Round_Name &&
                               w.winnerName === bid.name &&
-                              parseInt(w.amount) === bidAmount,
+                              parseInt(w.amount) === bid.bidAmount,
                           );
 
                           return (
@@ -1271,11 +1291,11 @@ const AdminBiddingDashboard = () => {
                               </td>
 
                               <td className="px-8 py-5 text-sm font-bold text-indigo-600">
-                                ₹{bidAmount.toLocaleString()}
+                                ₹{bid.bidAmount.toLocaleString()}
                               </td>
 
                               <td className="px-8 py-5 text-sm font-bold text-emerald-600">
-                                ₹{runningAmount.toLocaleString()}
+                                ₹{bid.remainingAmount.toLocaleString()}
                               </td>
 
                               <td className="px-8 py-5 text-sm font-bold text-slate-600">
