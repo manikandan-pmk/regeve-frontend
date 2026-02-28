@@ -471,8 +471,18 @@ export default function Participants() {
                       </td>
                       <td className="px-6 py-5 whitespace-nowrap">
                         <div className="flex items-center gap-4">
-                          <div className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-100 to-indigo-200 text-indigo-700 flex items-center justify-center font-black text-lg shadow-sm group-hover:shadow-md transition-shadow">
-                            {p.name ? p.name.charAt(0).toUpperCase() : "U"}
+                          <div className="w-11 h-11 rounded-full overflow-hidden shadow-sm">
+                            {p.Photo?.url ? (
+                              <img
+                                src={`https://api.regeve.in${p.Photo.url}`}
+                                alt={p.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full bg-gradient-to-br from-indigo-100 to-indigo-200 text-indigo-700 flex items-center justify-center font-black text-lg">
+                                {p.name ? p.name.charAt(0).toUpperCase() : "U"}
+                              </div>
+                            )}
                           </div>
                           <div>
                             <p className="text-sm font-extrabold text-slate-900">

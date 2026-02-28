@@ -16,6 +16,7 @@ import {
   IndianRupee,
   Settings2,
   Trash2,
+  Info
 } from "lucide-react";
 import axios from "axios";
 
@@ -115,7 +116,7 @@ export default function BiddingDashboard() {
     .filter(
       (bid) =>
         bid.nameOfBid?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        bid.biddingid?.toLowerCase().includes(searchTerm.toLowerCase())
+        bid.biddingid?.toLowerCase().includes(searchTerm.toLowerCase()),
     )
     .sort((a, b) => {
       if (sortBy === "newest")
@@ -470,7 +471,6 @@ function BiddingCard({ data, index, onClick, onEdit, onDelete }) {
               </span>
             </div>
           </div>
-          
         </div>
       </div>
 
@@ -671,38 +671,99 @@ function BiddingCard({ data, index, onClick, onEdit, onDelete }) {
 function CreateOrEditBiddingModal({ onClose, onSuccess, existingData }) {
   const isEditMode = !!existingData?.documentId;
 
-  // State for Form
+  // State for Form text data
   const [formData, setFormData] = useState({
     nameOfBid: existingData?.nameOfBid || "",
     amount: existingData?.amount || "",
     maxPeople: existingData?.maxPeople || "",
     durationValue: existingData?.durationValue || "",
     durationUnit: existingData?.durationUnit || "Monthly",
+    Upi_Id: existingData?.Upi_Id || "",
   });
+
+  // State for the uploaded media file
+  const [qrFile, setQrFile] = useState(null);
+  const [qrPreview, setQrPreview] = useState(existingData?.qrcode?.url || null);
 
   // State for UI
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [touched, setTouched] = useState({});
 
-  const handleChange = (e) =>
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    // Clear touched state for this field when user starts typing again
+    if (touched[name]) {
+      setTouched((prev) => ({ ...prev, [name]: false }));
+    }
+  };
+
+  const handleBlur = (e) => {
+    const { name } = e.target;
+    setTouched((prev) => ({ ...prev, [name]: true }));
+  };
+
+  const handleFileChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setQrFile(file);
+      
+      // Create preview URL
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setQrPreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveQR = () => {
+    setQrFile(null);
+    setQrPreview(null);
+    // Reset file input
+    document.getElementById('qr-upload').value = '';
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validate all fields before submission
+    const requiredFields = ['nameOfBid', 'amount', 'maxPeople', 'durationValue', 'Upi_Id'];
+    const missingFields = requiredFields.filter(field => !formData[field]?.toString().trim());
+    
+    if (missingFields.length > 0) {
+      // Mark all fields as touched to show errors
+      const newTouched = {};
+      requiredFields.forEach(field => newTouched[field] = true);
+      setTouched(newTouched);
+      return;
+    }
+
     if (isSubmitting) return;
     setIsSubmitting(true);
 
     try {
       const token = localStorage.getItem("jwt");
 
-      const payload = {
-        data: {
-          nameOfBid: formData.nameOfBid.trim(),
-          amount: Number(formData.amount),
-          maxPeople: Number(formData.maxPeople),
-          durationValue: Number(formData.durationValue),
-          durationUnit: formData.durationUnit,
-        },
+      // Use FormData to handle file uploads
+      const payload = new FormData();
+
+      const jsonPayload = {
+        nameOfBid: formData.nameOfBid.trim(),
+        amount: Number(formData.amount),
+        maxPeople: Number(formData.maxPeople),
+        durationValue: Number(formData.durationValue),
+        durationUnit: formData.durationUnit,
+        Upi_Id: formData.Upi_Id.trim(),
       };
+
+      // Append data object as string (Standard for Strapi/CMS media uploads)
+      payload.append("data", JSON.stringify(jsonPayload));
+
+      // Append file if selected
+      if (qrFile) {
+        payload.append("files.qrcode", qrFile);
+      }
 
       const url = isEditMode
         ? `${API_URL}/${existingData.documentId}`
@@ -713,40 +774,56 @@ function CreateOrEditBiddingModal({ onClose, onSuccess, existingData }) {
       await axios[method](url, payload, {
         headers: {
           Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
+          "Content-Type": "multipart/form-data",
         },
       });
 
       onSuccess();
     } catch (error) {
       console.error("EDIT ERROR:", error.response?.data || error.message);
+      // Show user-friendly error message
+      alert(error.response?.data?.error?.message || "Something went wrong. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const getFieldError = (fieldName) => {
+    if (!touched[fieldName]) return null;
+    const value = formData[fieldName];
+    if (!value?.toString().trim()) return "This field is required";
+    if (fieldName === 'amount' && value <= 0) return "Amount must be greater than 0";
+    if (fieldName === 'maxPeople' && value <= 0) return "Member limit must be greater than 0";
+    if (fieldName === 'durationValue' && value <= 0) return "Duration must be greater than 0";
+    if (fieldName === 'Upi_Id' && !/^[\w.-]+@[\w.-]+$/.test(value)) return "Invalid UPI ID format";
+    return null;
+  };
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300">
-      {/* --- MAIN FORM MODAL --- */}
-      <div className="bg-white w-full max-w-xl rounded-[2.5rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.2)] overflow-hidden border border-slate-100 flex flex-col max-h-[90vh]">
+      {/* MAIN FORM MODAL */}
+      <div className="bg-white w-full max-w-3xl rounded-[2rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.2)] flex flex-col max-h-[96vh] overflow-hidden border border-slate-100">
         {/* HEADER */}
-        <div className="relative px-8 pt-8 pb-6 bg-slate-50 border-b border-slate-100">
+        <div className="relative px-8 py-5 bg-gradient-to-r from-slate-50 to-white border-b border-slate-100 shrink-0">
           <button
             onClick={onClose}
-            className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-900 hover:bg-white rounded-full transition-all"
+            className="absolute top-5 right-5 p-2.5 text-slate-400 hover:text-slate-900 hover:bg-white/80 rounded-xl transition-all hover:scale-105 active:scale-95"
+            aria-label="Close modal"
           >
-            <X size={20} />
+            <X size={22} />
           </button>
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-200">
-              {isEditMode ? <Settings2 size={28} /> : <Rocket size={28} />}
+            <div className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-200">
+              {isEditMode ? <Settings2 size={24} /> : <Rocket size={24} />}
             </div>
             <div>
-              <h3 className="text-2xl font-black text-slate-900">
+              <h3 className="text-2xl font-black text-slate-900 tracking-tight">
                 {isEditMode ? "Modify Bidding" : "Launch New Bidding"}
               </h3>
-              <p className="text-slate-500 text-sm font-medium">
-                Manage your bidding pool details.
+              <p className="text-slate-500 text-sm font-medium mt-1">
+                {isEditMode
+                  ? "Update bidding pool parameters"
+                  : "Configure your new bidding pool"}
               </p>
             </div>
           </div>
@@ -756,15 +833,17 @@ function CreateOrEditBiddingModal({ onClose, onSuccess, existingData }) {
         <form
           onSubmit={handleSubmit}
           id="bidding-form"
-          className="p-8 space-y-5 overflow-y-auto"
+          className="px-8 py-6 overflow-y-auto space-y-5"
         >
+          {/* Bidding Name - Full Width */}
           <div className="space-y-1.5">
-            <label className="text-[11px] font-black text-slate-400 uppercase ml-1 tracking-wider">
-              Bidding Name
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1 flex items-center gap-1">
+              <span>Bidding Name</span>
+              <span className="text-red-500">*</span>
             </label>
-            <div className="relative group">
+            <div className="relative">
               <Type
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors"
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
                 size={18}
               />
               <input
@@ -772,20 +851,31 @@ function CreateOrEditBiddingModal({ onClose, onSuccess, existingData }) {
                 name="nameOfBid"
                 value={formData.nameOfBid}
                 onChange={handleChange}
-                className="w-full pl-12 pr-5 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:bg-white focus:border-indigo-500 outline-none transition-all font-semibold text-slate-700"
-                placeholder="Enter name"
+                onBlur={handleBlur}
+                className={`w-full pl-11 pr-4 py-3 bg-slate-50 border-2 rounded-xl focus:bg-white focus:border-indigo-500 outline-none transition-all font-medium text-slate-700 text-base placeholder:text-slate-400 ${
+                  getFieldError('nameOfBid') ? 'border-red-300 bg-red-50' : 'border-slate-100'
+                }`}
+                placeholder="e.g., Summer Special Bidding"
+                aria-describedby="name-error"
               />
             </div>
+            {getFieldError('nameOfBid') && (
+              <p id="name-error" className="text-xs text-red-500 mt-1 ml-1 font-medium">
+                {getFieldError('nameOfBid')}
+              </p>
+            )}
           </div>
 
-          <div className="grid grid-cols-2 gap-5">
+          {/* Amount and Member Limit - 2 columns */}
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-[11px] font-black text-slate-400 uppercase ml-1 tracking-wider">
-                Total Pool
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1 flex items-center gap-1">
+                <span>Total Pool (₹)</span>
+                <span className="text-red-500">*</span>
               </label>
-              <div className="relative group">
+              <div className="relative">
                 <IndianRupee
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
                   size={18}
                 />
                 <input
@@ -794,17 +884,30 @@ function CreateOrEditBiddingModal({ onClose, onSuccess, existingData }) {
                   name="amount"
                   value={formData.amount}
                   onChange={handleChange}
-                  className="w-full pl-12 pr-5 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:bg-white focus:border-indigo-500 outline-none transition-all font-semibold text-slate-700"
+                  onBlur={handleBlur}
+                  min="1"
+                  step="1"
+                  className={`w-full pl-11 pr-4 py-3 bg-slate-50 border-2 rounded-xl focus:bg-white focus:border-indigo-500 outline-none transition-all font-medium text-slate-700 text-base placeholder:text-slate-400 ${
+                    getFieldError('amount') ? 'border-red-300 bg-red-50' : 'border-slate-100'
+                  }`}
+                  placeholder="50,000"
                 />
               </div>
+              {getFieldError('amount') && (
+                <p className="text-xs text-red-500 mt-1 ml-1 font-medium">
+                  {getFieldError('amount')}
+                </p>
+              )}
             </div>
+
             <div className="space-y-1.5">
-              <label className="text-[11px] font-black text-slate-400 uppercase ml-1 tracking-wider">
-                Member Limit
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1 flex items-center gap-1">
+                <span>Member Limit</span>
+                <span className="text-red-500">*</span>
               </label>
-              <div className="relative group">
+              <div className="relative">
                 <Users2
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
                   size={18}
                 />
                 <input
@@ -813,70 +916,205 @@ function CreateOrEditBiddingModal({ onClose, onSuccess, existingData }) {
                   name="maxPeople"
                   value={formData.maxPeople}
                   onChange={handleChange}
-                  className="w-full pl-12 pr-5 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:bg-white focus:border-indigo-500 outline-none transition-all font-semibold text-slate-700"
+                  onBlur={handleBlur}
+                  min="1"
+                  step="1"
+                  className={`w-full pl-11 pr-4 py-3 bg-slate-50 border-2 rounded-xl focus:bg-white focus:border-indigo-500 outline-none transition-all font-medium text-slate-700 text-base placeholder:text-slate-400 ${
+                    getFieldError('maxPeople') ? 'border-red-300 bg-red-50' : 'border-slate-100'
+                  }`}
+                  placeholder="20"
                 />
               </div>
+              {getFieldError('maxPeople') && (
+                <p className="text-xs text-red-500 mt-1 ml-1 font-medium">
+                  {getFieldError('maxPeople')}
+                </p>
+              )}
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-[11px] font-black text-slate-400 uppercase ml-1 tracking-wider">
-              Duration Settings
-            </label>
-            <div className="flex gap-3">
-              <div className="relative group flex-[1.5]">
-                <Timer
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors"
-                  size={18}
-                />
+          {/* Duration and UPI ID - 2 columns */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1 flex items-center gap-1">
+                <span>Duration</span>
+                <span className="text-red-500">*</span>
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="relative">
+                  <Timer
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                    size={18}
+                  />
+                  <input
+                    required
+                    type="number"
+                    name="durationValue"
+                    value={formData.durationValue}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    min="1"
+                    step="1"
+                    className={`w-full pl-10 pr-3 py-3 bg-slate-50 border-2 rounded-xl focus:bg-white focus:border-indigo-500 outline-none transition-all font-medium text-slate-700 text-base placeholder:text-slate-400 ${
+                      getFieldError('durationValue') ? 'border-red-300 bg-red-50' : 'border-slate-100'
+                    }`}
+                    placeholder="12"
+                  />
+                </div>
+                <select
+                  name="durationUnit"
+                  value={formData.durationUnit}
+                  onChange={handleChange}
+                  className="px-3 py-3 bg-slate-100 border-2 border-slate-200 rounded-xl outline-none font-semibold text-slate-700 text-base cursor-pointer focus:border-indigo-500 focus:bg-white transition-all"
+                >
+                  <option value="Monthly">Monthly</option>
+                  <option value="Weekly">Weekly</option>
+                </select>
+              </div>
+              {getFieldError('durationValue') && (
+                <p className="text-xs text-red-500 mt-1 ml-1 font-medium">
+                  {getFieldError('durationValue')}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1 flex items-center gap-1">
+                <span>UPI ID</span>
+                <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <svg
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path d="M4 7h16M4 12h16M4 17h10" />
+                </svg>
                 <input
                   required
-                  type="number"
-                  name="durationValue"
-                  value={formData.durationValue}
+                  name="Upi_Id"
+                  value={formData.Upi_Id}
                   onChange={handleChange}
-                  className="w-full pl-12 pr-5 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:bg-white focus:border-indigo-500 outline-none transition-all font-semibold text-slate-700"
+                  onBlur={handleBlur}
+                  className={`w-full pl-11 pr-4 py-3 bg-slate-50 border-2 rounded-xl focus:bg-white focus:border-indigo-500 outline-none transition-all font-medium text-slate-700 text-base placeholder:text-slate-400 ${
+                    getFieldError('Upi_Id') ? 'border-red-300 bg-red-50' : 'border-slate-100'
+                  }`}
+                  placeholder="example@okhdfcbank"
                 />
               </div>
-              <select
-                name="durationUnit"
-                value={formData.durationUnit}
-                onChange={handleChange}
-                className="flex-1 px-5 py-4 bg-slate-100 border-2 border-slate-100 rounded-2xl outline-none font-bold text-slate-600 cursor-pointer focus:border-indigo-500 transition-all"
-              >
-                <option value="Monthly">Monthly</option>
-                <option value="Weekly">Weekly</option>
-              </select>
+              {getFieldError('Upi_Id') && (
+                <p className="text-xs text-red-500 mt-1 ml-1 font-medium">
+                  {getFieldError('Upi_Id')}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* QR Code File Upload */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">
+              QR Code Image {!isEditMode && <span className="text-red-500">*</span>}
+            </label>
+            <div className="space-y-3">
+              <div className="relative">
+                <svg
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="17 8 12 3 7 8" />
+                  <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+                <input
+                  id="qr-upload"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="w-full pl-11 pr-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl focus:bg-white focus:border-indigo-500 outline-none transition-all font-medium text-slate-700 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-bold file:bg-indigo-100 file:text-indigo-700 hover:file:bg-indigo-200 cursor-pointer"
+                />
+              </div>
+              
+              {/* QR Code Preview */}
+              {(qrPreview || existingData?.qrcode?.url) && (
+                <div className="flex items-center gap-4 p-3 bg-slate-50 rounded-xl border-2 border-slate-100">
+                  <div className="w-16 h-16 bg-white rounded-lg overflow-hidden border-2 border-slate-200">
+                    <img 
+                      src={qrPreview || existingData?.qrcode?.url} 
+                      alt="QR Code Preview"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-slate-700">
+                      {qrFile ? qrFile.name : 'Existing QR Code'}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      {qrFile 
+                        ? `${(qrFile.size / 1024).toFixed(1)} KB`
+                        : 'Previously uploaded'
+                      }
+                    </p>
+                  </div>
+                  {qrFile && (
+                    <button
+                      type="button"
+                      onClick={handleRemoveQR}
+                      className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                      aria-label="Remove QR code"
+                    >
+                      <X size={18} />
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {isEditMode && !qrFile && existingData?.qrcode && (
+                <p className="text-xs text-slate-500 ml-1 font-medium flex items-center gap-1">
+                  <Info size={14} />
+                  Leave empty to keep existing QR code.
+                </p>
+              )}
             </div>
           </div>
         </form>
 
         {/* FOOTER */}
-        <div className="p-8 bg-slate-50 border-t border-slate-100 flex items-center gap-4">
-          <div className="flex-1 flex gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 py-4 px-6 cursor-pointer hover:bg-red-500 hover:text-white rounded-2xl bg-white border border-slate-200 text-slate-600 font-black  transition-all"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              form="bidding-form"
-              disabled={isSubmitting}
-              className="flex-[2] py-4 px-6 rounded-2xl cursor-pointer bg-slate-900 text-white font-black hover:bg-indigo-600 shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 transition-all"
-            >
-              {isSubmitting ? (
-                <div className="w-5 h-5 border-2  border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                <>
-                  <CheckCircle2 size={20} />
-                  {isEditMode ? "Save Changes" : "Confirm Launch"}
-                </>
-              )}
-            </button>
-          </div>
+        <div className="px-8 py-5 bg-slate-50 border-t border-slate-100 flex items-center gap-3 shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 py-3 px-4 cursor-pointer hover:bg-red-500 hover:text-white rounded-xl bg-white border-2 border-slate-200 text-slate-600 text-sm font-bold transition-all hover:scale-[1.02] active:scale-95"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            form="bidding-form"
+            disabled={isSubmitting}
+            className="flex-[2] py-3 px-4 rounded-xl cursor-pointer bg-slate-900 text-white text-sm font-bold hover:bg-indigo-600 shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-70 disabled:hover:scale-100"
+          >
+            {isSubmitting ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <span>Processing...</span>
+              </>
+            ) : (
+              <>
+                <CheckCircle2 size={18} />
+                <span>{isEditMode ? "Save Changes" : "Create Bid"}</span>
+              </>
+            )}
+          </button>
         </div>
       </div>
     </div>
@@ -966,9 +1204,7 @@ function SingleBiddingAdminPage({ bid, onBack, adminId, navigate }) {
         <div className="flex gap-4">
           <button
             onClick={() =>
-              navigate(
-                `/${adminId}/bidding-participants/${bid.documentId}`
-              )
+              navigate(`/${adminId}/bidding-participants/${bid.documentId}`)
             }
             className="cursor-pointer px-8 py-3 bg-slate-900 text-white rounded-2xl font-bold hover:bg-indigo-600 transition-all shadow-lg shadow-slate-200"
           >
@@ -1047,7 +1283,7 @@ function SingleBiddingAdminPage({ bid, onBack, adminId, navigate }) {
         <div
           onClick={() =>
             navigate(
-              `/${adminId}/bidding-dashboard/${bid.documentId}/participants`
+              `/${adminId}/bidding-dashboard/${bid.documentId}/participants`,
             )
           }
           className="group bg-white/80 backdrop-blur-md p-8 rounded-[2rem] border border-white shadow-xl shadow-slate-100/50 flex flex-col justify-between cursor-pointer hover:border-indigo-200 transition-all"
@@ -1064,9 +1300,7 @@ function SingleBiddingAdminPage({ bid, onBack, adminId, navigate }) {
             <p className="text-5xl font-black text-slate-900 tracking-tighter">
               {participantCount}
             </p>
-            <p className="text-indigo-600 text-[10px] font-black uppercase tracking-widest mt-2 group-hover:translate-x-1 transition-transform">
-              Click to manage →
-            </p>
+            
           </div>
         </div>
       </div>
@@ -1089,8 +1323,6 @@ function SingleBiddingAdminPage({ bid, onBack, adminId, navigate }) {
               </p>
             </div>
           </div>
-
-       
         </div>
 
         {/* Content */}
@@ -1173,7 +1405,7 @@ function SingleBiddingAdminPage({ bid, onBack, adminId, navigate }) {
                                 month: "short",
                                 day: "numeric",
                                 year: "numeric",
-                              }
+                              },
                             )
                           : "TBD"}
                       </span>

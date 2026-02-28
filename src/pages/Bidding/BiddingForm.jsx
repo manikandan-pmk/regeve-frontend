@@ -9,7 +9,7 @@ const BiddingForm = () => {
   const [biddingName, setBiddingName] = useState("");
   const [isFetchingInfo, setIsFetchingInfo] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState(null);
+  const [toast, setToast] = useState(null); // Replaced 'message' with floating 'toast'
   const [realBiddingId, setRealBiddingId] = useState(null);
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [candidateInfo, setCandidateInfo] = useState(null);
@@ -22,18 +22,20 @@ const BiddingForm = () => {
     gender: "Male",
   });
 
-  // 🔹 FETCH BIDDING DETAILS (For Dynamic Header)
+  const [files, setFiles] = useState({
+    Photo: null,
+    id_Proof: null,
+  });
+
+  // 🔹 FETCH BIDDING DETAILS
   useEffect(() => {
     const fetchBiddingDetails = async () => {
       if (!documentId) return;
-
       try {
         const response = await axios.get(
           `https://api.regeve.in/api/biddings/public/${documentId}`,
         );
-
         const result = response.data;
-
         if (result && result.data) {
           setRealBiddingId(result.data.id);
           setBiddingName(
@@ -48,9 +50,16 @@ const BiddingForm = () => {
         setIsFetchingInfo(false);
       }
     };
-
     fetchBiddingDetails();
-  }, [documentId]); // ✅ fixed
+  }, [documentId]);
+
+  // 🔹 AUTO-HIDE TOAST ALERTS (3 SECONDS)
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 3500);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
 
   // 🔹 AUTO-HIDE SUCCESS POPUP AFTER 5 SECONDS
   useEffect(() => {
@@ -63,100 +72,90 @@ const BiddingForm = () => {
     }
   }, [showSuccessPopup]);
 
-  // 🔹 EARLY RETURN FOR INVALID LINK
-  if (!documentId) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
-        <div className="w-20 h-20 bg-red-100 text-red-600 rounded-full flex items-center justify-center text-4xl mb-4 shadow-lg shadow-red-100">
-          ⚠️
-        </div>
-        <h2 className="text-2xl font-black text-slate-800">Invalid Link</h2>
-        <p className="text-slate-500 mt-2">
-          This registration link is broken or missing.
-        </p>
-      </div>
-    );
-  }
-
   // 🔹 HANDLERS
+  const showToast = (type, text) => setToast({ type, text });
+
   const handleChange = (e) => {
     const { name, value } = e.target;
-
-    // Strict number-only constraint for phone fields
     if (name === "phonenumber" || name === "whatsappnumber") {
       const onlyNums = value.replace(/[^0-9]/g, "");
-      if (onlyNums.length <= 10) {
+      if (onlyNums.length <= 10)
         setFormData((prev) => ({ ...prev, [name]: onlyNums }));
-      }
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
   };
 
+  const handleFileChange = (e) => {
+    const { name, files: selectedFiles } = e.target;
+    if (!selectedFiles || !selectedFiles[0]) return;
+    setFiles((prev) => ({ ...prev, [name]: selectedFiles[0] }));
+  };
+
+  // 🔹 UPLOAD FILE TO STRAPI MEDIA LIBRARY
+  const uploadFileToStrapi = async (file) => {
+    const formData = new FormData();
+    formData.append("files", file);
+
+    const response = await axios.post(
+      "https://api.regeve.in/api/upload",
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      },
+    );
+
+    return response.data[0].id; // return media ID
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setMessage(null);
+    setToast(null);
 
-    // 1️⃣ STRICT VALIDATION
-    if (formData.phonenumber.length !== 10) {
-      setMessage({
-        type: "error",
-        text: "Phone Number must be exactly 10 digits.",
-      });
-      return;
-    }
-
-    if (formData.whatsappnumber.length !== 10) {
-      setMessage({
-        type: "error",
-        text: "WhatsApp Number must be exactly 10 digits.",
-      });
-      return;
-    }
+    if (formData.phonenumber.length !== 10)
+      return showToast("error", "Phone Number must be exactly 10 digits.");
+    if (formData.whatsappnumber.length !== 10)
+      return showToast("error", "WhatsApp Number must be exactly 10 digits.");
+    if (!files.Photo) return showToast("error", "Please upload a Photo.");
+    if (!files.id_Proof)
+      return showToast("error", "Please upload an ID Proof.");
 
     setLoading(true);
 
-    const payload = {
-      data: {
-        biddingId: realBiddingId,
-        name: formData.name,
-        phonenumber: Number(formData.phonenumber),
-        whatsappnumber: Number(formData.whatsappnumber),
-        age: Number(formData.age),
-        gender: formData.gender,
-      },
-    };
-
     try {
+      // 🔥 1️⃣ Upload files first
+      const photoId = await uploadFileToStrapi(files.Photo);
+      const idProofId = await uploadFileToStrapi(files.id_Proof);
+
+      // 🔥 2️⃣ Then create participant
       const response = await axios.post(
         "https://api.regeve.in/api/bidding-participants/create",
-        payload,
+        {
+          data: {
+            biddingId: realBiddingId,
+            name: formData.name,
+            phonenumber: Number(formData.phonenumber),
+            whatsappnumber: Number(formData.whatsappnumber),
+            age: Number(formData.age),
+            gender: formData.gender,
+            Photo: photoId, // 👈 attach media ID
+            Id_Proof: idProofId, // 👈 attach media ID
+          },
+        },
       );
 
       const result = response.data;
-      console.log("API Response:", result);
 
-      // ✅ Success - Show both message and popup
-      const successMessage = `Registration successful! Your Candidate ID is ${result.data.candidateid}`;
-
-      setMessage({
-        type: "success",
-        text: successMessage,
-      });
-
-      // Set candidate info for popup
       setCandidateInfo({
         name: formData.name,
         candidateId: result.data.candidateid,
         biddingName: biddingName,
       });
 
-      // Show success popup
       setShowSuccessPopup(true);
 
-      console.log("Submitting with ID:", realBiddingId);
-
-      // Reset form
       setFormData({
         name: "",
         phonenumber: "",
@@ -164,54 +163,62 @@ const BiddingForm = () => {
         age: "",
         gender: "Male",
       });
-    } catch (error) {
-      // Axios error handling
-      if (error.response) {
-        const backendMessage =
-          error.response.data?.error?.message ||
-          error.response.data?.message ||
-          "Failed to submit registration.";
 
-        setMessage({
-          type: "error",
-          text: backendMessage,
-        });
-      } else {
-        setMessage({
-          type: "error",
-          text: "Network error. Please try again.",
-        });
-      }
+      setFiles({ Photo: null, id_Proof: null });
+      e.target.reset();
+    } catch (error) {
+      showToast("error", "Upload failed. Try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  const closePopup = () => {
-    setShowSuccessPopup(false);
-    setCandidateInfo(null);
-  };
+  if (!documentId) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
+        <div className="w-24 h-24 bg-red-50 text-red-500 rounded-full flex items-center justify-center text-4xl mb-6 shadow-xl shadow-red-500/10 border border-red-100">
+          ⚠️
+        </div>
+        <h2 className="text-3xl font-black text-slate-800 tracking-tight">
+          Invalid Link
+        </h2>
+        <p className="text-slate-500 mt-2 font-medium">
+          This registration link is broken or missing.
+        </p>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 py-12 px-4 sm:px-6 lg:px-8 flex items-center justify-center font-sans selection:bg-indigo-100 selection:text-indigo-900 relative">
-      {/* 🔹 SUCCESS POPUP ANIMATION */}
-      {/* 🔹 SUCCESS POPUP UI/UX */}
-      {/* 🔹 MINIMALIST SUCCESS POPUP */}
+    <div className="min-h-screen bg-[#F8FAFC] py-12 px-4 sm:px-6 flex items-center justify-center font-sans relative overflow-hidden">
+      {/* 🔹 BACKGROUND BLOBS */}
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-400/20 rounded-full blur-[120px] pointer-events-none"></div>
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-emerald-400/20 rounded-full blur-[120px] pointer-events-none"></div>
+
+      {/* 🔹 FLOATING TOAST ALERT */}
+      {toast && (
+        <div className="fixed top-6 right-6 z-[200] animate-slide-in">
+          <div
+            className={`flex items-center gap-3 px-5 py-4 rounded-2xl shadow-2xl backdrop-blur-md border ${toast.type === "error" ? "bg-red-500/90 border-red-400 text-white" : "bg-slate-900/90 border-slate-700 text-white"}`}
+          >
+            <span>{toast.type === "error" ? "⚠️" : "✨"}</span>
+            <p className="font-semibold text-sm tracking-wide">{toast.text}</p>
+          </div>
+        </div>
+      )}
+
+      {/* 🔹 SUCCESS POPUP MODAL */}
       {showSuccessPopup && candidateInfo && (
         <div className="fixed inset-0 flex items-center justify-center z-[100] px-4 animate-fade-in">
-          {/* Ultra-dark backdrop to make the ID pop */}
           <div
-            className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"
-            onClick={closePopup}
+            className="absolute inset-0 bg-slate-900/40 backdrop-blur-md"
+            onClick={() => setShowSuccessPopup(false)}
           ></div>
-
-          {/* Popup Card */}
-          <div className="relative bg-white rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden transform animate-pop-in">
-            {/* Success Indicator */}
-            <div className="pt-8 pb-4 text-center">
-              <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <div className="relative bg-white/80 backdrop-blur-xl border border-white rounded-[2rem] shadow-2xl max-w-sm w-full overflow-hidden transform animate-pop-in">
+            <div className="pt-10 pb-6 text-center">
+              <div className="w-20 h-20 bg-gradient-to-tr from-emerald-400 to-emerald-300 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-emerald-500/30">
                 <svg
-                  className="w-8 h-8 text-emerald-600"
+                  className="w-10 h-10 text-white"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -224,100 +231,161 @@ const BiddingForm = () => {
                   />
                 </svg>
               </div>
-              <h3 className="text-slate-500 text-xs font-black uppercase tracking-[0.2em]">
-                Registration Successful
+              <h3 className="text-slate-400 text-xs font-black uppercase tracking-[0.25em]">
+                Success
               </h3>
             </div>
-
-            {/* Candidate ID Display */}
             <div className="px-8 pb-10">
-              <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center">
+              <div className="bg-white rounded-2xl p-6 text-center shadow-sm border border-slate-100">
                 <p className="text-slate-400 text-xs font-bold uppercase mb-2">
-                  Your Candidate ID
+                  Candidate ID
                 </p>
-                <div className="text-4xl font-black text-indigo-600 tracking-tight">
+                <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-600 tracking-tight">
                   {candidateInfo.candidateId}
                 </div>
               </div>
-
               <p className="text-center text-slate-500 text-sm mt-6 font-medium">
-                Welcome,{" "}
+                Welcome aboard,{" "}
                 <span className="text-slate-900 font-bold">
                   {candidateInfo.name}
                 </span>
               </p>
-
               <button
-                onClick={closePopup}
-                className="w-full mt-8 py-4 bg-slate-900 hover:bg-indigo-600 text-white font-bold rounded-xl transition-all active:scale-95 shadow-lg shadow-slate-200"
+                onClick={() => setShowSuccessPopup(false)}
+                className="w-full mt-8 py-4 bg-slate-900 hover:bg-indigo-600 text-white font-bold rounded-xl transition-all active:scale-[0.98] shadow-lg shadow-slate-900/20"
               >
-                Close
+                Done
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* 🔹 MAIN FORM (existing code) */}
-      <div className="max-w-xl w-full bg-white rounded-3xl shadow-2xl shadow-slate-300/50 overflow-hidden border border-white">
-        {/* 🔹 HEADER SECTION */}
-        <div className="bg-slate-900 px-8 py-12 text-center relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500 rounded-full blur-3xl opacity-20 -mr-20 -mt-20 pointer-events-none"></div>
-          <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-500 rounded-full blur-3xl opacity-20 -ml-20 -mb-20 pointer-events-none"></div>
-
-          <div className="relative z-10">
+      {/* 🔹 MAIN FORM */}
+      <div className="relative max-w-xl w-full bg-white/70 backdrop-blur-xl rounded-[2.5rem] shadow-2xl shadow-slate-200/50 border border-white overflow-hidden z-10">
+        {/* HEADER */}
+        <div className="bg-slate-900 px-8 py-14 text-center relative overflow-hidden">
+          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+          <div className="relative z-10 flex flex-col items-center">
             {isFetchingInfo ? (
-              <div className="h-8 w-3/4 bg-slate-800 rounded animate-pulse mx-auto mb-2"></div>
+              <div className="h-10 w-48 bg-slate-800 rounded-lg animate-pulse mb-3"></div>
             ) : (
-              <h2 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-2">
+              <h2 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-3">
                 {biddingName}
               </h2>
             )}
-            <p className="text-indigo-200 text-xs font-bold tracking-[0.2em] uppercase">
-              Official Participant Registration
-            </p>
+            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-200 text-xs font-bold tracking-[0.15em] uppercase">
+              <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></span>{" "}
+              Registration
+            </span>
           </div>
         </div>
 
-        {/* 🔹 FORM SECTION */}
-        <form onSubmit={handleSubmit} className="px-8 py-10 space-y-7">
-          {/* Notifications */}
-          {message && (
-            <div
-              className={`p-4 rounded-xl text-sm font-bold flex items-start gap-3 animate-fade-in-up ${
-                message.type === "error"
-                  ? "bg-red-50 text-red-700 border border-red-100"
-                  : "bg-emerald-50 text-emerald-700 border border-emerald-100"
-              }`}
-            >
-              <span className="text-lg">
-                {message.type === "error" ? "⚠️" : "✅"}
-              </span>
-              <span className="pt-0.5">{message.text}</span>
-            </div>
-          )}
-
-          {/* Personal Information Group */}
-          <div className="space-y-5">
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                Full Name <span className="text-red-500">*</span>
+        {/* FORM FIELDS */}
+        <form onSubmit={handleSubmit} className="px-8 py-10 space-y-8">
+          <div className="space-y-6">
+            {/* FULL NAME */}
+            <div className="relative">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 ml-1">
+                Full Name
               </label>
-              <input
-                type="text"
-                name="name"
-                required
-                value={formData.name}
-                onChange={handleChange}
-                className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none font-medium"
-                placeholder="Enter your legal name"
-              />
+              <div className="relative flex items-center">
+                <svg
+                  className="absolute left-4 w-5 h-5 text-slate-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                  ></path>
+                </svg>
+                <input
+                  type="text"
+                  name="name"
+                  required
+                  value={formData.name}
+                  onChange={handleChange}
+                  className="w-full pl-12 pr-5 py-4 bg-white border border-slate-200 rounded-2xl text-slate-900 placeholder-slate-400 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all outline-none font-semibold shadow-sm"
+                  placeholder="e.g. John Doe"
+                />
+              </div>
             </div>
 
+            {/* CUSTOM FILE UPLOADS */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {[
+                { label: "Photo", name: "Photo" },
+                { label: "ID Proof", name: "id_Proof" },
+              ].map((field) => (
+                <div key={field.name} className="relative group">
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 ml-1">
+                    {field.label}
+                  </label>
+                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-slate-300 bg-slate-50 rounded-2xl cursor-pointer hover:bg-indigo-50 hover:border-indigo-400 transition-all group-hover:shadow-sm">
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4">
+                      {files[field.name] ? (
+                        <>
+                          <div className="w-8 h-8 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-2">
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="3"
+                                d="M5 13l4 4L19 7"
+                              ></path>
+                            </svg>
+                          </div>
+                          <p className="text-xs font-bold text-slate-700 truncate max-w-[120px]">
+                            {files[field.name].name}
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <svg
+                            className="w-8 h-8 mb-2 text-slate-400 group-hover:text-indigo-500 transition-colors"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+                            ></path>
+                          </svg>
+                          <p className="text-xs font-semibold text-slate-500">
+                            Click to upload
+                          </p>
+                        </>
+                      )}
+                    </div>
+                    <input
+                      type="file"
+                      name={field.name}
+                      required
+                      className="hidden"
+                      onChange={handleFileChange}
+                    />
+                  </label>
+                </div>
+              ))}
+            </div>
+
+            {/* AGE & GENDER */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                  Age <span className="text-red-500">*</span>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 ml-1">
+                  Age
                 </label>
                 <input
                   type="number"
@@ -326,39 +394,54 @@ const BiddingForm = () => {
                   min="18"
                   value={formData.age}
                   onChange={handleChange}
-                  className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none font-medium"
-                  placeholder="Minimum 18"
+                  className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl text-slate-900 placeholder-slate-400 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all outline-none font-semibold shadow-sm"
+                  placeholder="18+"
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                  Gender <span className="text-red-500">*</span>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 ml-1">
+                  Gender
                 </label>
-                <select
-                  name="gender"
-                  required
-                  value={formData.gender}
-                  onChange={handleChange}
-                  className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none font-medium cursor-pointer"
-                >
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                  <option value="Others">Others</option>
-                </select>
+                <div className="relative">
+                  <select
+                    name="gender"
+                    required
+                    value={formData.gender}
+                    onChange={handleChange}
+                    className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl text-slate-900 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all outline-none font-semibold shadow-sm appearance-none cursor-pointer"
+                  >
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Others">Others</option>
+                  </select>
+                  <svg
+                    className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M19 9l-7 7-7-7"
+                    ></path>
+                  </svg>
+                </div>
               </div>
             </div>
           </div>
 
-          <hr className="border-slate-100" />
+          <hr className="border-slate-200/60" />
 
-          {/* Contact Information Group */}
-          <div className="space-y-5">
+          {/* CONTACT INFO */}
+          <div className="space-y-6">
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                Phone Number <span className="text-red-500">*</span>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 ml-1">
+                Phone Number
               </label>
-              <div className="flex">
-                <span className="inline-flex items-center px-4 rounded-l-xl border border-r-0 border-slate-200 bg-slate-100 text-slate-500 font-bold">
+              <div className="flex shadow-sm rounded-2xl overflow-hidden focus-within:ring-4 focus-within:ring-indigo-500/10 focus-within:border-indigo-500 transition-all border border-slate-200 bg-white">
+                <span className="flex items-center justify-center px-4 bg-slate-50 border-r border-slate-200 text-slate-500 font-bold text-sm">
                   +91
                 </span>
                 <input
@@ -367,18 +450,25 @@ const BiddingForm = () => {
                   required
                   value={formData.phonenumber}
                   onChange={handleChange}
-                  className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-r-xl text-slate-900 placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none font-medium"
-                  placeholder="10-digit mobile number"
+                  className="w-full px-5 py-4 bg-transparent outline-none font-semibold text-slate-900 placeholder-slate-400"
+                  placeholder="00000 00000"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                WhatsApp Number <span className="text-red-500">*</span>
+              <label className="block text-xs font-bold text-emerald-600 uppercase tracking-wider mb-2 ml-1">
+                WhatsApp Number
               </label>
-              <div className="flex">
-                <span className="inline-flex items-center px-4 rounded-l-xl border border-r-0 border-slate-200 bg-emerald-50 text-emerald-600 font-bold">
+              <div className="flex shadow-sm rounded-2xl overflow-hidden focus-within:ring-4 focus-within:ring-emerald-500/10 focus-within:border-emerald-500 transition-all border border-slate-200 bg-white">
+                <span className="flex items-center justify-center px-4 bg-emerald-50 border-r border-slate-200 text-emerald-600 font-bold text-sm">
+                  <svg
+                    className="w-5 h-5 mr-1"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
+                  </svg>
                   WA
                 </span>
                 <input
@@ -387,30 +477,24 @@ const BiddingForm = () => {
                   required
                   value={formData.whatsappnumber}
                   onChange={handleChange}
-                  className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-r-xl text-slate-900 placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all outline-none font-medium"
-                  placeholder="10-digit WhatsApp number"
+                  className="w-full px-5 py-4 bg-transparent outline-none font-semibold text-slate-900 placeholder-slate-400"
+                  placeholder="00000 00000"
                 />
               </div>
             </div>
           </div>
 
-          {/* 🔹 SUBMIT BUTTON */}
-          <div className="pt-4">
+          {/* SUBMIT BUTTON */}
+          <div className="pt-6">
             <button
               type="submit"
               disabled={loading}
-              className={`w-full py-4 px-4 rounded-xl shadow-lg text-white font-bold text-lg tracking-wide uppercase transition-all duration-200 flex items-center justify-center gap-3
-                ${
-                  loading
-                    ? "bg-slate-400 cursor-not-allowed shadow-none"
-                    : "bg-slate-900 hover:bg-indigo-600 hover:shadow-indigo-200 active:scale-[0.98]"
-                }
-              `}
+              className={`relative overflow-hidden w-full py-5 rounded-2xl font-black text-lg tracking-widest uppercase transition-all duration-300 flex items-center justify-center gap-3 ${loading ? "bg-slate-200 text-slate-400 cursor-not-allowed" : "bg-slate-900 text-white hover:bg-indigo-600 hover:shadow-2xl hover:shadow-indigo-500/30 hover:-translate-y-1 active:translate-y-0"}`}
             >
               {loading ? (
                 <>
                   <svg
-                    className="animate-spin h-5 w-5 text-white"
+                    className="animate-spin h-6 w-6 text-slate-500"
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
                     viewBox="0 0 24 24"
@@ -432,45 +516,38 @@ const BiddingForm = () => {
                   Processing...
                 </>
               ) : (
-                "Submit Registration"
+                "Complete Registration"
               )}
             </button>
-            <p className="text-center text-xs font-medium text-slate-400 mt-5">
-              By submitting this form, your data will be securely processed.
+            <p className="text-center text-xs font-semibold text-slate-400 mt-6 flex items-center justify-center gap-2">
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                ></path>
+              </svg>
+              Secure 256-bit Encrypted Process
             </p>
           </div>
         </form>
       </div>
 
-      {/* 🔹 ADD CUSTOM CSS ANIMATIONS */}
-      <style jsx>{`
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-          }
-          to {
-            opacity: 1;
-          }
-        }
-
-        @keyframes popIn {
-          0% {
-            opacity: 0;
-            transform: scale(0.9) translateY(20px);
-          }
-          100% {
-            opacity: 1;
-            transform: scale(1) translateY(0);
-          }
-        }
-
-        .animate-fade-in {
-          animation: fadeIn 0.2s ease-out forwards;
-        }
-
-        .animate-pop-in {
-          animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-        }
+      {/* ANIMATIONS */}
+      <style>{`
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes popIn { 0% { opacity: 0; transform: scale(0.95) translateY(10px); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
+        @keyframes slideIn { 0% { opacity: 0; transform: translateX(50px); } 100% { opacity: 1; transform: translateX(0); } }
+       
+        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        .animate-pop-in { animation: popIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .animate-slide-in { animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
       `}</style>
     </div>
   );
