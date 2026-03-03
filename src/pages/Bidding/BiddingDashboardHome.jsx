@@ -1,8 +1,12 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { createPortal } from "react-dom";
 import {
+  Camera,
   PencilLine,
+  Upload,
   Calendar,
+  Check,
   Users,
   ArrowRight,
   ShieldCheck,
@@ -16,7 +20,14 @@ import {
   IndianRupee,
   Settings2,
   Trash2,
-  Info
+  Info,
+  Wallet,
+  CreditCard,
+  Download,
+  Filter,
+  Eye,
+  AlertCircle,
+  RefreshCw,
 } from "lucide-react";
 import axios from "axios";
 
@@ -36,6 +47,13 @@ export default function BiddingDashboard() {
 
   const [deleteTarget, setDeleteTarget] = useState(null); // Stores the bid object to delete
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // State for payment verification modal
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedPaymentBid, setSelectedPaymentBid] = useState(null);
+  const [paymentParticipants, setPaymentParticipants] = useState([]);
+  const [isLoadingPayments, setIsLoadingPayments] = useState(false);
+  
 
   const fetchBiddings = async () => {
     try {
@@ -75,12 +93,112 @@ export default function BiddingDashboard() {
     }
   };
 
+  // ✅ UPDATED: fetch payments and group by participant
+  const fetchPaymentParticipants = async (bidDocumentId) => {
+    try {
+      setIsLoadingPayments(true);
+      const token = localStorage.getItem("jwt");
+
+      const response = await axios.get(
+        `https://api.regeve.in/api/bidding-participant-payments/${bidDocumentId}?populate=*`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+
+      const payments = response?.data || []; // array of payment objects
+
+      // Group payments by participant documentId
+      const participantsMap = new Map();
+
+      payments.forEach((payment) => {
+        const participant = payment.bidding_participant;
+        if (!participant) return;
+
+        const participantId = participant.documentId;
+        if (!participantsMap.has(participantId)) {
+          participantsMap.set(participantId, {
+            id: participant.id,
+            documentId: participant.documentId,
+            name: participant.name,
+            candidateid: participant.candidateid,
+            phonenumber: participant.phonenumber,
+            photoUrl: participant.Photo?.url
+              ? `https://api.regeve.in${participant.Photo.url}`
+              : null,
+            payments: [],
+          });
+        }
+
+        // Add payment to participant's payments array
+        participantsMap.get(participantId).payments.push({
+          id: payment.id,
+          documentId: payment.documentId,
+          roundName: payment.Round_Name,
+          amount: payment.Amount,
+          isVerified: payment.Is_Verified,
+          proofUrl: payment.Payment_Proof?.url
+            ? `https://api.regeve.in${payment.Payment_Proof.url}`
+            : null,
+        });
+      });
+
+      // Convert map to array
+      const groupedParticipants = Array.from(participantsMap.values());
+      setPaymentParticipants(groupedParticipants);
+    } catch (error) {
+      console.error("Error fetching payments:", error.response || error);
+      setPaymentParticipants([]);
+    } finally {
+      setIsLoadingPayments(false);
+    }
+  };
+
+  const verifyParticipantPayment = async (
+    participantId,
+    paymentDocumentId,
+    roundName,
+    amount,
+  ) => {
+    try {
+      if (!paymentDocumentId) {
+        console.error("Payment documentId missing");
+        return;
+      }
+
+      const token = localStorage.getItem("jwt");
+
+      await axios.put(
+        `https://api.regeve.in/api/bidding-participant-payments/${paymentDocumentId}`,
+        {
+          data: {
+            Is_Verified: true,
+          },
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      if (selectedPaymentBid?.documentId) {
+        fetchPaymentParticipants(selectedPaymentBid.documentId);
+      }
+
+      setSuccessMessage(
+        `Payment verified successfully for Round: ${roundName}`,
+      );
+      setTimeout(() => setSuccessMessage(""), 3000);
+    } catch (error) {
+      console.error("Error verifying payment:", error.response?.data);
+    }
+  };
+
   const handleDeleteBid = (bid) => {
-    // Instead of window.confirm, we just save the bid and show the UI
     setDeleteTarget(bid);
   };
 
-  // 3. The actual API call triggered by the "Confirm" button in the popup
   const confirmDelete = async () => {
     if (!deleteTarget) return;
 
@@ -97,7 +215,6 @@ export default function BiddingDashboard() {
       fetchBiddings(); // Refresh list
     } catch (error) {
       console.error("DELETE ERROR:", error.response?.data || error.message);
-      // You can add a "Error" state here to show an animated error message instead of alert
     } finally {
       setIsDeleting(false);
     }
@@ -137,6 +254,12 @@ export default function BiddingDashboard() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  const handleViewPayments = (bid) => {
+    setSelectedPaymentBid(bid);
+    fetchPaymentParticipants(bid.documentId || bid.id);
+    setShowPaymentModal(true);
+  };
+
   const handleBack = () => navigate(`/${adminId}/bidding-dashboard`);
   const currentView = documentId ? "detail" : "list";
 
@@ -151,19 +274,13 @@ export default function BiddingDashboard() {
       {/* PROFESSIONAL DELETE MODAL */}
       {deleteTarget && (
         <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
-          {/* Backdrop with a deeper blur */}
           <div
             className="absolute inset-0 bg-slate-900/40 backdrop-blur-md transition-opacity animate-in fade-in duration-300"
             onClick={() => !isDeleting && setDeleteTarget(null)}
           />
-
-          {/* Modal Card */}
           <div className="relative bg-white rounded-3xl shadow-2xl border border-slate-200/60 w-full max-w-md overflow-hidden transform transition-all animate-in zoom-in-95 duration-200">
-            {/* Top Warning Strip */}
             <div className="h-2 bg-red-500 w-full" />
-
             <div className="p-8">
-              {/* Icon & Title Group */}
               <div className="flex items-start gap-5">
                 <div className="flex-shrink-0 w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center border border-red-100">
                   <Trash2 className="text-red-600" size={28} />
@@ -181,8 +298,6 @@ export default function BiddingDashboard() {
                   </p>
                 </div>
               </div>
-
-              {/* Action Buttons */}
               <div className="flex items-center gap-3 mt-8">
                 <button
                   disabled={isDeleting}
@@ -191,7 +306,6 @@ export default function BiddingDashboard() {
                 >
                   Cancel
                 </button>
-
                 <button
                   disabled={isDeleting}
                   onClick={confirmDelete}
@@ -208,8 +322,6 @@ export default function BiddingDashboard() {
                 </button>
               </div>
             </div>
-
-            {/* Subtle Footer Note */}
             <div className="bg-slate-50 px-8 py-3 border-t border-slate-100 flex items-center justify-center gap-2">
               <span className="w-1.5 h-1.5 bg-slate-300 rounded-full" />
               <span className="text-[11px] font-medium text-slate-400 uppercase tracking-widest">
@@ -219,6 +331,22 @@ export default function BiddingDashboard() {
           </div>
         </div>
       )}
+
+      {/* Payment Verification Modal */}
+      {showPaymentModal && (
+        <PaymentVerificationModal
+          bid={selectedPaymentBid}
+          participants={paymentParticipants}
+          isLoading={isLoadingPayments}
+          onClose={() => {
+            setShowPaymentModal(false);
+            setSelectedPaymentBid(null);
+            setPaymentParticipants([]);
+          }}
+          onVerify={verifyParticipantPayment}
+        />
+      )}
+
       <Header
         adminId={adminId}
         onBack={handleBack}
@@ -235,7 +363,8 @@ export default function BiddingDashboard() {
       <main className="relative z-10 max-w-7xl mx-auto px-6 md:px-8 pt-28 pb-16">
         {successMessage && (
           <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-2xl shadow-sm animate-fade-in flex items-center gap-3">
-            <span className="text-xl">✅</span> {successMessage}
+            <CheckCircle2 size={20} className="text-emerald-600" />
+            {successMessage}
           </div>
         )}
 
@@ -253,6 +382,7 @@ export default function BiddingDashboard() {
               setShowCreateModal(true);
             }}
             onDelete={handleDeleteBid}
+            onViewPayments={handleViewPayments}
           />
         ) : (
           <SingleBiddingAdminPage
@@ -260,6 +390,9 @@ export default function BiddingDashboard() {
             onBack={handleBack}
             adminId={adminId}
             navigate={navigate}
+            onViewPayments={() =>
+              selectedBid && handleViewPayments(selectedBid)
+            }
           />
         )}
       </main>
@@ -330,19 +463,7 @@ function Header({
                 onClick={onRefresh}
                 className="cursor-pointer p-2.5 rounded-xl text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all border border-transparent hover:border-indigo-100"
               >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2.5}
-                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                  />
-                </svg>
+                <RefreshCw size={20} />
               </button>
 
               <button
@@ -366,6 +487,7 @@ function DashboardOverview({
   searchTerm,
   onEdit,
   onDelete,
+  onViewPayments,
 }) {
   return (
     <div className="space-y-8">
@@ -385,6 +507,7 @@ function DashboardOverview({
               onClick={() => onCardClick(bid)}
               onEdit={onEdit}
               onDelete={onDelete}
+              onViewPayments={onViewPayments}
             />
           ))}
         </div>
@@ -393,10 +516,16 @@ function DashboardOverview({
   );
 }
 
-function BiddingCard({ data, index, onClick, onEdit, onDelete }) {
-  // Added onDelete prop
+function BiddingCard({
+  data,
+  index,
+  onClick,
+  onEdit,
+  onDelete,
+  onViewPayments,
+}) {
   const {
-    documentId, // Ensure you are using the ID needed for the API
+    documentId,
     biddingid,
     nameOfBid,
     amount,
@@ -412,7 +541,12 @@ function BiddingCard({ data, index, onClick, onEdit, onDelete }) {
 
   const handleDeleteClick = (e) => {
     e.stopPropagation();
-    onDelete(data); // Call the delete function passed from parent
+    onDelete(data);
+  };
+
+  const handleViewPaymentsClick = (e) => {
+    e.stopPropagation();
+    onViewPayments(data);
   };
 
   return (
@@ -424,15 +558,6 @@ function BiddingCard({ data, index, onClick, onEdit, onDelete }) {
 
       {/* ACTION BUTTONS CONTAINER */}
       <div className="absolute top-6 right-6 z-20 flex gap-2">
-        {/* Trash/Delete Button */}
-        <button
-          onClick={handleDeleteClick}
-          className="p-2.5 bg-red-50/80 backdrop-blur-md text-red-500 hover:text-white hover:bg-red-500 rounded-2xl shadow-sm border border-red-100 transition-all duration-300 cursor-pointer hover:rotate-12 active:scale-90"
-          title="Delete Scheme"
-        >
-          <Trash2 size={18} strokeWidth={2.5} />
-        </button>
-
         {/* Edit Button */}
         <button
           onClick={handleEditClick}
@@ -440,6 +565,15 @@ function BiddingCard({ data, index, onClick, onEdit, onDelete }) {
           title="Edit Scheme"
         >
           <PencilLine size={18} strokeWidth={2.5} />
+        </button>
+
+        {/* Trash/Delete Button */}
+        <button
+          onClick={handleDeleteClick}
+          className="p-2.5 bg-red-50/80 backdrop-blur-md text-red-500 hover:text-white hover:bg-red-500 rounded-2xl shadow-sm border border-red-100 transition-all duration-300 cursor-pointer hover:rotate-12 active:scale-90"
+          title="Delete Scheme"
+        >
+          <Trash2 size={18} strokeWidth={2.5} />
         </button>
       </div>
 
@@ -517,161 +651,340 @@ function BiddingCard({ data, index, onClick, onEdit, onDelete }) {
   );
 }
 
-// function CreateBiddingModal({ onClose, onSuccess }) {
-//   const [formData, setFormData] = useState({
-//     nameOfBid: "",
-//     amount: "",
-//     maxPeople: "",
-//     durationValue: "",
-//     durationUnit: "Monthly",
-//   });
-//   const [isSubmitting, setIsSubmitting] = useState(false);
+// ✅ UPDATED PaymentVerificationModal to use grouped payments
+function PaymentVerificationModal({
+  bid,
+  participants,
+  isLoading,
+  onClose,
+  onVerify,
+}) {
+  const [selectedRound, setSelectedRound] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [verifyingId, setVerifyingId] = useState(null);
+  const [previewImage, setPreviewImage] = useState(null);
 
-//   const handleSubmit = async (e) => {
-//     e.preventDefault();
-//     if (isSubmitting) return;
-//     setIsSubmitting(true);
-//     try {
-//       const token = localStorage.getItem("jwt");
-//       const payload = {
-//         data: {
-//           nameOfBid: formData.nameOfBid.trim(),
-//           amount: Number(formData.amount),
-//           maxPeople: Number(formData.maxPeople),
-//           durationValue: Number(formData.durationValue),
-//           durationUnit: formData.durationUnit,
-//         },
-//       };
-//       await axios.post(`${API_URL}/create`, payload, {
-//         headers: {
-//           Authorization: `Bearer ${token}`,
-//           "Content-Type": "application/json",
-//         },
-//       });
-//       onSuccess();
-//     } catch (error) {
-//       alert(error.response?.data?.message || "Failed to create scheme");
-//     } finally {
-//       setIsSubmitting(false);
-//     }
-//   };
+  if (!bid) return null;
 
-//   const handleChange = (e) =>
-//     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  // Get unique rounds from all payments
+  const rounds = [
+    "all",
+    ...new Set(
+      participants.flatMap((p) => p.payments.map((pay) => pay.roundName)),
+    ),
+  ];
 
-//   return (
-//     <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in">
-//       <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden animate-scale-up border border-white">
-//         <div className="px-10 py-8 bg-slate-900 text-white">
-//           <h3 className="text-3xl font-black tracking-tight">Launch Scheme</h3>
-//           <p className="text-slate-400 text-sm mt-1">
-//             Configure your new chit fund parameters
-//           </p>
-//         </div>
+  const filteredParticipants = participants.filter((participant) => {
+    const matchesSearch =
+      participant.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      participant.candidateid
+        ?.toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      participant.phonenumber?.includes(searchTerm);
 
-//         <form onSubmit={handleSubmit} className="p-10 space-y-6">
-//           <div className="space-y-2">
-//             <label className="text-xs font-black text-slate-500 uppercase tracking-widest">
-//               Scheme Title
-//             </label>
-//             <input
-//               required
-//               name="nameOfBid"
-//               value={formData.nameOfBid}
-//               onChange={handleChange}
-//               className="w-full px-5 py-4 rounded-2xl border-2 border-slate-100 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 outline-none transition-all font-bold text-slate-700"
-//               placeholder="Enter scheme name..."
-//             />
-//           </div>
+    let matchesRound = true;
+    if (selectedRound !== "all") {
+      matchesRound = participant.payments.some(
+        (pay) => pay.roundName === selectedRound,
+      );
+    }
 
-//           <div className="grid grid-cols-2 gap-6">
-//             <div className="space-y-2">
-//               <label className="text-xs font-black text-slate-500 uppercase tracking-widest">
-//                 Total Amount (₹)
-//               </label>
-//               <input
-//                 required
-//                 type="number"
-//                 name="amount"
-//                 value={formData.amount}
-//                 onChange={handleChange}
-//                 className="w-full px-5 py-4 rounded-2xl border-2 border-slate-100 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 outline-none transition-all font-bold text-slate-700"
-//                 placeholder="50,000"
-//               />
-//             </div>
-//             <div className="space-y-2">
-//               <label className="text-xs font-black text-slate-500 uppercase tracking-widest">
-//                 Member Limit
-//               </label>
-//               <input
-//                 required
-//                 type="number"
-//                 name="maxPeople"
-//                 value={formData.maxPeople}
-//                 onChange={handleChange}
-//                 className="w-full px-5 py-4 rounded-2xl border-2 border-slate-100 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 outline-none transition-all font-bold text-slate-700"
-//                 placeholder="20"
-//               />
-//             </div>
-//           </div>
+    return matchesSearch && matchesRound;
+  });
 
-//           <div className="grid grid-cols-2 gap-6">
-//             <div className="space-y-2">
-//               <label className="text-xs font-black text-slate-500 uppercase tracking-widest">
-//                 Duration
-//               </label>
-//               <input
-//                 required
-//                 type="number"
-//                 name="durationValue"
-//                 value={formData.durationValue}
-//                 onChange={handleChange}
-//                 className="w-full px-5 py-4 rounded-2xl border-2 border-slate-100 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 outline-none transition-all font-bold text-slate-700"
-//                 placeholder="12"
-//               />
-//             </div>
-//             <div className="space-y-2">
-//               <label className="text-xs font-black text-slate-500 uppercase tracking-widest">
-//                 Interval
-//               </label>
-//               <select
-//                 name="durationUnit"
-//                 value={formData.durationUnit}
-//                 onChange={handleChange}
-//                 className="w-full cursor-pointer px-5 py-4 rounded-2xl border-2 border-slate-100 focus:border-indigo-500 outline-none transition-all font-bold text-slate-700"
-//               >
-//                 <option value="Monthly">Monthly</option>
-//                 <option value="Weekly">Weekly</option>
-//               </select>
-//             </div>
-//           </div>
+  const handleVerify = async (participantId, paymentId, roundName, amount) => {
+    setVerifyingId(paymentId);
+    await onVerify(participantId, paymentId, roundName, amount);
+    setVerifyingId(null);
+  };
 
-//           <div className="flex gap-4 pt-4">
-//             <button
-//               type="button"
-//               onClick={onClose}
-//               className="flex-1 cursor-pointer py-4 rounded-2xl bg-slate-50 text-slate-600 font-bold hover:bg-slate-100 transition-all"
-//             >
-//               Cancel
-//             </button>
-//             <button
-//               type="submit"
-//               disabled={isSubmitting}
-//               className="flex-[2] cursor-pointer py-4 rounded-2xl bg-indigo-600 text-white font-bold shadow-xl shadow-indigo-100 hover:bg-indigo-700 transform hover:-translate-y-1 active:scale-95 transition-all disabled:opacity-50"
-//             >
-//               {isSubmitting ? "Processing..." : "Create Scheme"}
-//             </button>
-//           </div>
-//         </form>
-//       </div>
-//     </div>
-//   );
-// }
+  const getPaymentStatusBadge = (payment) => {
+    if (payment.isVerified) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-[10px] font-black uppercase tracking-widest border border-emerald-100">
+          <CheckCircle2 size={12} strokeWidth={3} />
+          Verified
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 text-amber-600 rounded-lg text-[10px] font-black uppercase tracking-widest border border-amber-100">
+        <AlertCircle size={12} strokeWidth={3} />
+        Pending
+      </span>
+    );
+  };
+
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm">
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 md:p-8 bg-gradient-to-br from-slate-900/80 to-indigo-900/80 backdrop-blur-md animate-in fade-in duration-300">
+        <div className="bg-white w-full max-w-5xl rounded-[2rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.3)] flex flex-col max-h-[98vh] overflow-hidden border border-slate-100/20 animate-in zoom-in-95 duration-300">
+          {/* HEADER */}
+          <div className="relative px-6 sm:px-8 py-5 bg-gradient-to-r from-emerald-50 to-white border-b border-slate-100 shrink-0">
+            <button
+              onClick={onClose}
+              className="absolute top-4 right-4 sm:top-5 sm:right-5 p-2.5 text-slate-400 hover:text-slate-900 hover:bg-white/80 rounded-xl transition-all hover:scale-105 active:scale-95 hover:shadow-lg"
+              aria-label="Close modal"
+            >
+              <X size={22} />
+            </button>
+
+            <div className="flex items-center gap-4 pr-12">
+              <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-emerald-200 shrink-0">
+                <Wallet size={24} />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight truncate">
+                  Payment Verification
+                </h3>
+                <p className="text-slate-500 text-xs sm:text-sm font-medium mt-1 flex items-center gap-1 truncate">
+                  <Info size={14} className="shrink-0" />
+                  {bid.nameOfBid} - Review and approve candidate transactions
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* FILTERS */}
+          <div className="px-6 sm:px-8 py-4 bg-slate-50/50 border-b border-slate-100 flex flex-col sm:flex-row gap-4 shrink-0">
+            <div className="flex-1 min-w-0">
+              <div className="relative group">
+                <Filter
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-500 transition-colors"
+                  size={18}
+                />
+                <input
+                  type="text"
+                  placeholder="Search by name, ID, or phone..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-11 pr-4 py-3 bg-white border-2 border-slate-100 rounded-xl focus:border-emerald-500 outline-none transition-all font-medium text-slate-700 text-sm placeholder:text-slate-400 hover:border-slate-200"
+                />
+              </div>
+            </div>
+            <div className="sm:w-56 shrink-0">
+              <select
+                value={selectedRound}
+                onChange={(e) => setSelectedRound(e.target.value)}
+                className="w-full px-4 py-3 bg-white border-2 border-slate-100 rounded-xl outline-none font-bold text-slate-700 text-sm cursor-pointer focus:border-emerald-500 transition-all hover:border-slate-200"
+              >
+                {rounds.map((round) => (
+                  <option key={round} value={round}>
+                    {round === "all" ? "Filter by Round (All)" : round}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* CONTENT AREA */}
+          <div className="flex-1 overflow-y-auto p-6 sm:p-8 bg-slate-50/30">
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center h-64 space-y-4">
+                <div className="w-12 h-12 border-4 border-emerald-100 border-t-emerald-500 rounded-full animate-spin"></div>
+                <p className="text-slate-400 font-bold text-sm tracking-widest uppercase">
+                  Fetching Records...
+                </p>
+              </div>
+            ) : filteredParticipants.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-64 text-center px-4 animate-fade-in">
+                <div className="w-20 h-20 bg-slate-100 rounded-3xl flex items-center justify-center mb-4 border-2 border-dashed border-slate-200">
+                  <Users size={32} className="text-slate-400" />
+                </div>
+                <h4 className="text-xl font-black text-slate-800 tracking-tight mb-2">
+                  No Participants Found
+                </h4>
+                <p className="text-sm text-slate-500 font-medium max-w-sm">
+                  {searchTerm || selectedRound !== "all"
+                    ? "We couldn't find any records matching your current filters. Try adjusting them."
+                    : "No participants have initiated payments for this bidding scheme yet."}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {filteredParticipants.map((participant) => (
+                  <div
+                    key={participant.documentId}
+                    className="bg-white border-2 border-slate-100 rounded-2xl p-5 hover:border-emerald-100 hover:shadow-xl hover:shadow-emerald-100/20 transition-all duration-300 group"
+                  >
+                    {/* Participant Header Info */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5 pb-5 border-b border-slate-50">
+                      <div className="flex items-center gap-4 min-w-0">
+                        <div className="w-12 h-12 bg-indigo-50 border border-indigo-100 rounded-2xl flex items-center justify-center shrink-0 group-hover:bg-emerald-50 group-hover:border-emerald-100 transition-colors">
+                          {participant.photoUrl ? (
+                            <img
+                              src={participant.photoUrl}
+                              alt={participant.name}
+                              className="w-full h-full rounded-2xl object-cover"
+                            />
+                          ) : (
+                            <span className="text-lg font-black text-indigo-600 group-hover:text-emerald-600 transition-colors">
+                              {participant.name?.charAt(0).toUpperCase() || "U"}
+                            </span>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="font-bold text-slate-900 text-lg truncate tracking-tight">
+                            {participant.name || "Unknown Participant"}
+                          </h4>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md uppercase tracking-widest">
+                              {participant.candidateid || "N/A"}
+                            </span>
+                            <span className="text-xs font-medium text-slate-500 truncate">
+                              {participant.phonenumber || "No phone"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-1 bg-slate-50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none shrink-0">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                          Total Paid
+                        </span>
+                        <p className="text-2xl font-black text-emerald-600 tracking-tighter">
+                          ₹
+                          {participant.payments
+                            .reduce(
+                              (sum, p) => sum + parseFloat(p.amount || 0),
+                              0,
+                            )
+                            .toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Payments List Area */}
+                    {participant.payments.length > 0 ? (
+                      <div className="space-y-3">
+                        {participant.payments.map((payment) => (
+                          <div
+                            key={payment.documentId}
+                            className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-slate-50/80 rounded-[1.25rem] border border-slate-100 hover:bg-white transition-colors"
+                          >
+                            <div className="flex flex-wrap items-center gap-3">
+                              <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-slate-100 shadow-sm">
+                                <CreditCard
+                                  size={14}
+                                  className="text-indigo-400 shrink-0"
+                                />
+                                <span className="font-bold text-sm text-slate-700">
+                                  {payment.roundName}
+                                </span>
+                              </div>
+
+                              <span className="text-slate-900 font-black text-base ml-1">
+                                ₹
+                                {parseFloat(
+                                  payment.amount || 0,
+                                ).toLocaleString()}
+                              </span>
+
+                              {payment.proofUrl && (
+                                <button
+                                  onClick={() =>
+                                    setPreviewImage(payment.proofUrl)
+                                  }
+                                  className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg text-xs font-bold transition-all active:scale-95 border border-indigo-100"
+                                >
+                                  <Eye size={14} />
+                                  View Proof
+                                </button>
+                              )}
+
+                              <div className="ml-auto sm:ml-2">
+                                {getPaymentStatusBadge(payment)}
+                              </div>
+                            </div>
+
+                            {!payment.isVerified && (
+                              <button
+                                onClick={() =>
+                                  handleVerify(
+                                    participant.documentId,
+                                    payment.documentId,
+                                    payment.roundName,
+                                    payment.amount,
+                                  )
+                                }
+                                disabled={verifyingId === payment.documentId}
+                                className="sm:ml-auto w-full sm:w-auto px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold shadow-lg shadow-emerald-200 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-70 disabled:hover:scale-100 flex items-center justify-center gap-2 cursor-pointer"
+                              >
+                                {verifyingId === payment.documentId ? (
+                                  <>
+                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    <span>Approving...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <CheckCircle2 size={16} strokeWidth={2.5} />
+                                    <span>Approve Payment</span>
+                                  </>
+                                )}
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="py-4 text-center bg-slate-50 rounded-[1.25rem] border border-slate-100 border-dashed">
+                        <p className="text-sm font-medium text-slate-400">
+                          No transaction records found for this participant.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* FOOTER */}
+          <div className="px-6 sm:px-8 py-5 bg-slate-50 border-t border-slate-100 flex justify-end shrink-0">
+            <button
+              onClick={onClose}
+              className="w-full sm:w-auto px-8 py-3 bg-white border-2 border-slate-200 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-100 hover:text-slate-900 transition-all hover:scale-[1.02] active:scale-95 shadow-sm cursor-pointer"
+            >
+              Close Window
+            </button>
+          </div>
+        </div>
+      </div>
+      {previewImage && (
+  <div
+    className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/70 backdrop-blur-sm"
+    onClick={() => setPreviewImage(null)}
+  >
+    <div
+      className="relative max-w-3xl w-full mx-4 bg-white rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <button
+        onClick={() => setPreviewImage(null)}
+        className="absolute top-4 right-4 bg-white/80 hover:bg-white text-slate-600 hover:text-slate-900 p-2 rounded-xl shadow-md transition"
+      >
+        <X size={18} />
+      </button>
+
+      <div className="p-4 flex items-center justify-center bg-slate-50">
+        <img
+          src={previewImage}
+          alt="Payment Proof Preview"
+          className="max-h-[80vh] object-contain rounded-xl"
+        />
+      </div>
+    </div>
+  </div>
+)}
+    </div>,
+    
+    document.body,
+  );
+}
 
 function CreateOrEditBiddingModal({ onClose, onSuccess, existingData }) {
   const isEditMode = !!existingData?.documentId;
 
-  // State for Form text data
   const [formData, setFormData] = useState({
     nameOfBid: existingData?.nameOfBid || "",
     amount: existingData?.amount || "",
@@ -681,18 +994,22 @@ function CreateOrEditBiddingModal({ onClose, onSuccess, existingData }) {
     Upi_Id: existingData?.Upi_Id || "",
   });
 
-  // State for the uploaded media file
   const [qrFile, setQrFile] = useState(null);
-  const [qrPreview, setQrPreview] = useState(existingData?.qrcode?.url || null);
-
-  // State for UI
+  const [qrPreview, setQrPreview] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [touched, setTouched] = useState({});
+
+  useEffect(() => {
+    if (existingData?.QR_Code?.length > 0) {
+      const file = existingData.QR_Code[0];
+      setQrPreview(`https://api.regeve.in${file.url}`);
+    }
+  }, [existingData]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    // Clear touched state for this field when user starts typing again
     if (touched[name]) {
       setTouched((prev) => ({ ...prev, [name]: false }));
     }
@@ -704,37 +1021,64 @@ function CreateOrEditBiddingModal({ onClose, onSuccess, existingData }) {
   };
 
   const handleFileChange = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setQrFile(file);
-      
-      // Create preview URL
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setQrPreview(reader.result);
-      };
-      reader.readAsDataURL(file);
+    const file = e.target.files?.[0];
+    if (file) {
+      processQRFile(file);
     }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith("image/")) {
+      processQRFile(file);
+    }
+  };
+
+  const processQRFile = (file) => {
+    setQrFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setQrPreview(reader.result);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleRemoveQR = () => {
     setQrFile(null);
     setQrPreview(null);
-    // Reset file input
-    document.getElementById('qr-upload').value = '';
+    document.getElementById("qr-upload").value = "";
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Validate all fields before submission
-    const requiredFields = ['nameOfBid', 'amount', 'maxPeople', 'durationValue', 'Upi_Id'];
-    const missingFields = requiredFields.filter(field => !formData[field]?.toString().trim());
-    
+
+    const requiredFields = [
+      "nameOfBid",
+      "amount",
+      "maxPeople",
+      "durationValue",
+      "Upi_Id",
+    ];
+
+    const missingFields = requiredFields.filter(
+      (field) => !formData[field]?.toString().trim(),
+    );
+
     if (missingFields.length > 0) {
-      // Mark all fields as touched to show errors
       const newTouched = {};
-      requiredFields.forEach(field => newTouched[field] = true);
+      requiredFields.forEach((field) => (newTouched[field] = true));
       setTouched(newTouched);
       return;
     }
@@ -745,25 +1089,37 @@ function CreateOrEditBiddingModal({ onClose, onSuccess, existingData }) {
     try {
       const token = localStorage.getItem("jwt");
 
-      // Use FormData to handle file uploads
-      const payload = new FormData();
+      let uploadedFileId = existingData?.QR_Code?.[0]?.id || null;
 
-      const jsonPayload = {
-        nameOfBid: formData.nameOfBid.trim(),
-        amount: Number(formData.amount),
-        maxPeople: Number(formData.maxPeople),
-        durationValue: Number(formData.durationValue),
-        durationUnit: formData.durationUnit,
-        Upi_Id: formData.Upi_Id.trim(),
-      };
-
-      // Append data object as string (Standard for Strapi/CMS media uploads)
-      payload.append("data", JSON.stringify(jsonPayload));
-
-      // Append file if selected
       if (qrFile) {
-        payload.append("files.qrcode", qrFile);
+        const uploadData = new FormData();
+        uploadData.append("files", qrFile);
+
+        const uploadRes = await axios.post(
+          "https://api.regeve.in/api/upload",
+          uploadData,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "multipart/form-data",
+            },
+          },
+        );
+
+        uploadedFileId = uploadRes.data[0].id;
       }
+
+      const payload = {
+        data: {
+          nameOfBid: formData.nameOfBid.trim(),
+          amount: Number(formData.amount),
+          maxPeople: Number(formData.maxPeople),
+          durationValue: Number(formData.durationValue),
+          durationUnit: formData.durationUnit,
+          Upi_Id: formData.Upi_Id.trim(),
+          QR_Code: uploadedFileId,
+        },
+      };
 
       const url = isEditMode
         ? `${API_URL}/${existingData.documentId}`
@@ -774,15 +1130,17 @@ function CreateOrEditBiddingModal({ onClose, onSuccess, existingData }) {
       await axios[method](url, payload, {
         headers: {
           Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data",
+          "Content-Type": "application/json",
         },
       });
 
       onSuccess();
     } catch (error) {
-      console.error("EDIT ERROR:", error.response?.data || error.message);
-      // Show user-friendly error message
-      alert(error.response?.data?.error?.message || "Something went wrong. Please try again.");
+      console.error("SUBMIT ERROR:", error.response?.data || error.message);
+      alert(
+        error.response?.data?.error?.message ||
+          "Something went wrong. Please try again.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -792,38 +1150,42 @@ function CreateOrEditBiddingModal({ onClose, onSuccess, existingData }) {
     if (!touched[fieldName]) return null;
     const value = formData[fieldName];
     if (!value?.toString().trim()) return "This field is required";
-    if (fieldName === 'amount' && value <= 0) return "Amount must be greater than 0";
-    if (fieldName === 'maxPeople' && value <= 0) return "Member limit must be greater than 0";
-    if (fieldName === 'durationValue' && value <= 0) return "Duration must be greater than 0";
-    if (fieldName === 'Upi_Id' && !/^[\w.-]+@[\w.-]+$/.test(value)) return "Invalid UPI ID format";
+    if (fieldName === "amount" && value <= 0)
+      return "Amount must be greater than 0";
+    if (fieldName === "maxPeople" && value <= 0)
+      return "Member limit must be greater than 0";
+    if (fieldName === "durationValue" && value <= 0)
+      return "Duration must be greater than 0";
+    if (fieldName === "Upi_Id" && !/^[\w.-]+@[\w.-]+$/.test(value))
+      return "Invalid UPI ID format";
     return null;
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300">
-      {/* MAIN FORM MODAL */}
-      <div className="bg-white w-full max-w-3xl rounded-[2rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.2)] flex flex-col max-h-[96vh] overflow-hidden border border-slate-100">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 md:p-8 bg-gradient-to-br from-slate-900/80 to-indigo-900/80 backdrop-blur-md animate-in fade-in duration-300">
+      <div className="bg-white w-full max-w-5xl rounded-[2rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.3)] flex flex-col max-h-[98vh] overflow-hidden border border-slate-100/20 animate-in zoom-in-95 duration-300">
         {/* HEADER */}
-        <div className="relative px-8 py-5 bg-gradient-to-r from-slate-50 to-white border-b border-slate-100 shrink-0">
+        <div className="relative px-6 sm:px-8 py-5 bg-gradient-to-r from-indigo-50 to-white border-b border-slate-100 shrink-0">
           <button
             onClick={onClose}
-            className="absolute top-5 right-5 p-2.5 text-slate-400 hover:text-slate-900 hover:bg-white/80 rounded-xl transition-all hover:scale-105 active:scale-95"
+            className="absolute top-4 right-4 sm:top-5 sm:right-5 p-2.5 text-slate-400 hover:text-slate-900 hover:bg-white/80 rounded-xl transition-all hover:scale-105 active:scale-95 hover:shadow-lg"
             aria-label="Close modal"
           >
             <X size={22} />
           </button>
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-200">
+            <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-200">
               {isEditMode ? <Settings2 size={24} /> : <Rocket size={24} />}
             </div>
             <div>
-              <h3 className="text-2xl font-black text-slate-900 tracking-tight">
-                {isEditMode ? "Modify Bidding" : "Launch New Bidding"}
+              <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                {isEditMode ? "Modify Bidding Pool" : "Launch New Bidding Pool"}
               </h3>
-              <p className="text-slate-500 text-sm font-medium mt-1">
+              <p className="text-slate-500 text-xs sm:text-sm font-medium mt-1 flex items-center gap-1">
+                <Info size={14} />
                 {isEditMode
-                  ? "Update bidding pool parameters"
-                  : "Configure your new bidding pool"}
+                  ? "Update bidding parameters and payment details"
+                  : "Configure your new bidding pool with payment QR"}
               </p>
             </div>
           </div>
@@ -833,267 +1195,301 @@ function CreateOrEditBiddingModal({ onClose, onSuccess, existingData }) {
         <form
           onSubmit={handleSubmit}
           id="bidding-form"
-          className="px-8 py-6 overflow-y-auto space-y-5"
+          className="px-6 sm:px-8 py-6 overflow-y-auto"
         >
-          {/* Bidding Name - Full Width */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1 flex items-center gap-1">
-              <span>Bidding Name</span>
-              <span className="text-red-500">*</span>
-            </label>
-            <div className="relative">
-              <Type
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                size={18}
-              />
-              <input
-                required
-                name="nameOfBid"
-                value={formData.nameOfBid}
-                onChange={handleChange}
-                onBlur={handleBlur}
-                className={`w-full pl-11 pr-4 py-3 bg-slate-50 border-2 rounded-xl focus:bg-white focus:border-indigo-500 outline-none transition-all font-medium text-slate-700 text-base placeholder:text-slate-400 ${
-                  getFieldError('nameOfBid') ? 'border-red-300 bg-red-50' : 'border-slate-100'
-                }`}
-                placeholder="e.g., Summer Special Bidding"
-                aria-describedby="name-error"
-              />
-            </div>
-            {getFieldError('nameOfBid') && (
-              <p id="name-error" className="text-xs text-red-500 mt-1 ml-1 font-medium">
-                {getFieldError('nameOfBid')}
-              </p>
-            )}
-          </div>
-
-          {/* Amount and Member Limit - 2 columns */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1 flex items-center gap-1">
-                <span>Total Pool (₹)</span>
-                <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <IndianRupee
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                  size={18}
-                />
-                <input
-                  required
-                  type="number"
-                  name="amount"
-                  value={formData.amount}
-                  onChange={handleChange}
-                  onBlur={handleBlur}
-                  min="1"
-                  step="1"
-                  className={`w-full pl-11 pr-4 py-3 bg-slate-50 border-2 rounded-xl focus:bg-white focus:border-indigo-500 outline-none transition-all font-medium text-slate-700 text-base placeholder:text-slate-400 ${
-                    getFieldError('amount') ? 'border-red-300 bg-red-50' : 'border-slate-100'
-                  }`}
-                  placeholder="50,000"
-                />
-              </div>
-              {getFieldError('amount') && (
-                <p className="text-xs text-red-500 mt-1 ml-1 font-medium">
-                  {getFieldError('amount')}
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1 flex items-center gap-1">
-                <span>Member Limit</span>
-                <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <Users2
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                  size={18}
-                />
-                <input
-                  required
-                  type="number"
-                  name="maxPeople"
-                  value={formData.maxPeople}
-                  onChange={handleChange}
-                  onBlur={handleBlur}
-                  min="1"
-                  step="1"
-                  className={`w-full pl-11 pr-4 py-3 bg-slate-50 border-2 rounded-xl focus:bg-white focus:border-indigo-500 outline-none transition-all font-medium text-slate-700 text-base placeholder:text-slate-400 ${
-                    getFieldError('maxPeople') ? 'border-red-300 bg-red-50' : 'border-slate-100'
-                  }`}
-                  placeholder="20"
-                />
-              </div>
-              {getFieldError('maxPeople') && (
-                <p className="text-xs text-red-500 mt-1 ml-1 font-medium">
-                  {getFieldError('maxPeople')}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Duration and UPI ID - 2 columns */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1 flex items-center gap-1">
-                <span>Duration</span>
-                <span className="text-red-500">*</span>
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="relative">
-                  <Timer
-                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Left Column - Main Details */}
+            <div className="space-y-5">
+              {/* Bidding Name */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1 flex items-center gap-1">
+                  <span>Bidding Name</span>
+                  <span className="text-red-500">*</span>
+                </label>
+                <div className="relative group">
+                  <Type
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors"
                     size={18}
                   />
                   <input
                     required
-                    type="number"
-                    name="durationValue"
-                    value={formData.durationValue}
+                    name="nameOfBid"
+                    value={formData.nameOfBid}
                     onChange={handleChange}
                     onBlur={handleBlur}
-                    min="1"
-                    step="1"
-                    className={`w-full pl-10 pr-3 py-3 bg-slate-50 border-2 rounded-xl focus:bg-white focus:border-indigo-500 outline-none transition-all font-medium text-slate-700 text-base placeholder:text-slate-400 ${
-                      getFieldError('durationValue') ? 'border-red-300 bg-red-50' : 'border-slate-100'
+                    className={`w-full pl-11 pr-4 py-3.5 bg-slate-50 border-2 rounded-xl focus:bg-white focus:border-indigo-500 outline-none transition-all font-medium text-slate-700 text-base placeholder:text-slate-400 ${
+                      getFieldError("nameOfBid")
+                        ? "border-red-300 bg-red-50/50"
+                        : "border-slate-100 hover:border-slate-200"
                     }`}
-                    placeholder="12"
+                    placeholder="e.g., Summer Special Bidding"
                   />
                 </div>
-                <select
-                  name="durationUnit"
-                  value={formData.durationUnit}
-                  onChange={handleChange}
-                  className="px-3 py-3 bg-slate-100 border-2 border-slate-200 rounded-xl outline-none font-semibold text-slate-700 text-base cursor-pointer focus:border-indigo-500 focus:bg-white transition-all"
-                >
-                  <option value="Monthly">Monthly</option>
-                  <option value="Weekly">Weekly</option>
-                </select>
+                {getFieldError("nameOfBid") && (
+                  <p className="text-xs text-red-500 mt-1 ml-1 font-medium flex items-center gap-1">
+                    <AlertCircle size={12} />
+                    {getFieldError("nameOfBid")}
+                  </p>
+                )}
               </div>
-              {getFieldError('durationValue') && (
-                <p className="text-xs text-red-500 mt-1 ml-1 font-medium">
-                  {getFieldError('durationValue')}
-                </p>
-              )}
-            </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1 flex items-center gap-1">
-                <span>UPI ID</span>
-                <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <svg
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <path d="M4 7h16M4 12h16M4 17h10" />
-                </svg>
-                <input
-                  required
-                  name="Upi_Id"
-                  value={formData.Upi_Id}
-                  onChange={handleChange}
-                  onBlur={handleBlur}
-                  className={`w-full pl-11 pr-4 py-3 bg-slate-50 border-2 rounded-xl focus:bg-white focus:border-indigo-500 outline-none transition-all font-medium text-slate-700 text-base placeholder:text-slate-400 ${
-                    getFieldError('Upi_Id') ? 'border-red-300 bg-red-50' : 'border-slate-100'
-                  }`}
-                  placeholder="example@okhdfcbank"
-                />
-              </div>
-              {getFieldError('Upi_Id') && (
-                <p className="text-xs text-red-500 mt-1 ml-1 font-medium">
-                  {getFieldError('Upi_Id')}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* QR Code File Upload */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">
-              QR Code Image {!isEditMode && <span className="text-red-500">*</span>}
-            </label>
-            <div className="space-y-3">
-              <div className="relative">
-                <svg
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="17 8 12 3 7 8" />
-                  <line x1="12" y1="3" x2="12" y2="15" />
-                </svg>
-                <input
-                  id="qr-upload"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileChange}
-                  className="w-full pl-11 pr-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl focus:bg-white focus:border-indigo-500 outline-none transition-all font-medium text-slate-700 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-bold file:bg-indigo-100 file:text-indigo-700 hover:file:bg-indigo-200 cursor-pointer"
-                />
-              </div>
-              
-              {/* QR Code Preview */}
-              {(qrPreview || existingData?.qrcode?.url) && (
-                <div className="flex items-center gap-4 p-3 bg-slate-50 rounded-xl border-2 border-slate-100">
-                  <div className="w-16 h-16 bg-white rounded-lg overflow-hidden border-2 border-slate-200">
-                    <img 
-                      src={qrPreview || existingData?.qrcode?.url} 
-                      alt="QR Code Preview"
-                      className="w-full h-full object-cover"
+              {/* Amount and Member Limit */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1 flex items-center gap-1">
+                    <span>Pool (₹)</span>
+                    <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative group">
+                    <IndianRupee
+                      className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors"
+                      size={18}
+                    />
+                    <input
+                      required
+                      type="number"
+                      name="amount"
+                      value={formData.amount}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      min="1"
+                      step="1"
+                      className={`w-full pl-11 pr-4 py-3.5 bg-slate-50 border-2 rounded-xl focus:bg-white focus:border-indigo-500 outline-none transition-all font-medium text-slate-700 text-base ${
+                        getFieldError("amount")
+                          ? "border-red-300 bg-red-50/50"
+                          : "border-slate-100 hover:border-slate-200"
+                      }`}
+                      placeholder="50,000"
                     />
                   </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-slate-700">
-                      {qrFile ? qrFile.name : 'Existing QR Code'}
+                  {getFieldError("amount") && (
+                    <p className="text-xs text-red-500 mt-1 ml-1 font-medium">
+                      {getFieldError("amount")}
                     </p>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      {qrFile 
-                        ? `${(qrFile.size / 1024).toFixed(1)} KB`
-                        : 'Previously uploaded'
-                      }
-                    </p>
-                  </div>
-                  {qrFile && (
-                    <button
-                      type="button"
-                      onClick={handleRemoveQR}
-                      className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                      aria-label="Remove QR code"
-                    >
-                      <X size={18} />
-                    </button>
                   )}
                 </div>
-              )}
 
-              {isEditMode && !qrFile && existingData?.qrcode && (
-                <p className="text-xs text-slate-500 ml-1 font-medium flex items-center gap-1">
-                  <Info size={14} />
-                  Leave empty to keep existing QR code.
-                </p>
-              )}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1 flex items-center gap-1">
+                    <span>Members</span>
+                    <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative group">
+                    <Users2
+                      className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors"
+                      size={18}
+                    />
+                    <input
+                      required
+                      type="number"
+                      name="maxPeople"
+                      value={formData.maxPeople}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      min="1"
+                      step="1"
+                      className={`w-full pl-11 pr-4 py-3.5 bg-slate-50 border-2 rounded-xl focus:bg-white focus:border-indigo-500 outline-none transition-all font-medium text-slate-700 text-base ${
+                        getFieldError("maxPeople")
+                          ? "border-red-300 bg-red-50/50"
+                          : "border-slate-100 hover:border-slate-200"
+                      }`}
+                      placeholder="20"
+                    />
+                  </div>
+                  {getFieldError("maxPeople") && (
+                    <p className="text-xs text-red-500 mt-1 ml-1 font-medium">
+                      {getFieldError("maxPeople")}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Duration and UPI ID */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1 flex items-center gap-1">
+                    <span>Duration</span>
+                    <span className="text-red-500">*</span>
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="relative group">
+                      <Timer
+                        className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors"
+                        size={18}
+                      />
+                      <input
+                        required
+                        type="number"
+                        name="durationValue"
+                        value={formData.durationValue}
+                        onChange={handleChange}
+                        onBlur={handleBlur}
+                        min="1"
+                        step="1"
+                        className={`w-full pl-10 pr-3 py-3.5 bg-slate-50 border-2 rounded-xl focus:bg-white focus:border-indigo-500 outline-none transition-all font-medium text-slate-700 text-base ${
+                          getFieldError("durationValue")
+                            ? "border-red-300 bg-red-50/50"
+                            : "border-slate-100 hover:border-slate-200"
+                        }`}
+                        placeholder="12"
+                      />
+                    </div>
+                    <select
+                      name="durationUnit"
+                      value={formData.durationUnit}
+                      onChange={handleChange}
+                      className="px-3 py-3.5 bg-slate-100 border-2 border-slate-200 rounded-xl outline-none font-semibold text-slate-700 text-base cursor-pointer focus:border-indigo-500 focus:bg-white transition-all"
+                    >
+                      <option value="Monthly">Monthly</option>
+                      <option value="Weekly">Weekly</option>
+                    </select>
+                  </div>
+                  {getFieldError("durationValue") && (
+                    <p className="text-xs text-red-500 mt-1 ml-1 font-medium">
+                      {getFieldError("durationValue")}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1 flex items-center gap-1">
+                    <span>UPI ID</span>
+                    <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative group">
+                    <svg
+                      className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors"
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <path d="M4 7h16M4 12h16M4 17h10" />
+                    </svg>
+                    <input
+                      required
+                      name="Upi_Id"
+                      value={formData.Upi_Id}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      className={`w-full pl-11 pr-4 py-3.5 bg-slate-50 border-2 rounded-xl focus:bg-white focus:border-indigo-500 outline-none transition-all font-medium text-slate-700 text-base ${
+                        getFieldError("Upi_Id")
+                          ? "border-red-300 bg-red-50/50"
+                          : "border-slate-100 hover:border-slate-200"
+                      }`}
+                      placeholder="example@okhdfcbank"
+                    />
+                  </div>
+                  {getFieldError("Upi_Id") && (
+                    <p className="text-xs text-red-500 mt-1 ml-1 font-medium">
+                      {getFieldError("Upi_Id")}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column - QR Code Upload */}
+            <div className="space-y-3">
+              <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl p-5 border-2 border-indigo-100 h-full flex flex-col">
+                <label className="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-3 flex items-center gap-1">
+                  <Camera size={14} />
+                  QR Code Image{" "}
+                  {!isEditMode && <span className="text-red-500">*</span>}
+                </label>
+
+                {/* Upload Area */}
+                <div
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  className={`flex-1 min-h-[240px] relative rounded-xl border-2 border-dashed transition-all ${
+                    isDragging
+                      ? "border-indigo-500 bg-indigo-50/50 scale-[1.02]"
+                      : "border-indigo-200 hover:border-indigo-300 bg-white/50"
+                  }`}
+                >
+                  <input
+                    id="qr-upload"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                  />
+
+                  {!qrPreview ? (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
+                      <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mb-3">
+                        <Upload className="w-8 h-8 text-indigo-600" />
+                      </div>
+                      <p className="text-sm font-medium text-slate-700 mb-1">
+                        Drop your QR code here
+                      </p>
+                      <p className="text-xs text-slate-500 mb-3">
+                        or click to browse
+                      </p>
+                      <p className="text-xs text-slate-400">
+                        Supports: JPG, PNG, GIF (max 5MB)
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="absolute inset-0 p-4 flex flex-col">
+                      <div className="flex-1 flex items-center justify-center bg-white rounded-lg border-2 border-indigo-100 overflow-hidden">
+                        <img
+                          src={qrPreview}
+                          alt="QR Code Preview"
+                          className="max-w-full max-h-full object-contain"
+                        />
+                      </div>
+
+                      {/* Preview Controls */}
+                      <div className="mt-3 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                            <Check className="w-4 h-4 text-green-600" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-medium text-slate-700">
+                              {qrFile ? qrFile.name : "QR Code Preview"}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              {qrFile
+                                ? `${(qrFile.size / 1024).toFixed(1)} KB`
+                                : "Existing QR code"}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleRemoveQR}
+                          className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {isEditMode && !qrFile && existingData?.QR_Code && (
+                  <p className="text-xs text-slate-500 mt-3 flex items-center gap-1">
+                    <Info size={14} className="text-indigo-500" />
+                    Keep empty to use existing QR code
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </form>
 
         {/* FOOTER */}
-        <div className="px-8 py-5 bg-slate-50 border-t border-slate-100 flex items-center gap-3 shrink-0">
+        <div className="px-6 sm:px-8 py-5 bg-slate-50 border-t border-slate-100 flex items-center gap-3 shrink-0">
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 py-3 px-4 cursor-pointer hover:bg-red-500 hover:text-white rounded-xl bg-white border-2 border-slate-200 text-slate-600 text-sm font-bold transition-all hover:scale-[1.02] active:scale-95"
+            className="flex-1 py-3.5 px-4 cursor-pointer hover:bg-red-500 hover:text-white rounded-xl bg-white border-2 border-slate-200 text-slate-600 text-sm font-bold transition-all hover:scale-[1.02] active:scale-95 hover:shadow-lg"
           >
             Cancel
           </button>
@@ -1101,7 +1497,7 @@ function CreateOrEditBiddingModal({ onClose, onSuccess, existingData }) {
             type="submit"
             form="bidding-form"
             disabled={isSubmitting}
-            className="flex-[2] py-3 px-4 rounded-xl cursor-pointer bg-slate-900 text-white text-sm font-bold hover:bg-indigo-600 shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-70 disabled:hover:scale-100"
+            className="flex-[2] py-3.5 px-4 rounded-xl cursor-pointer bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-sm font-bold hover:from-indigo-700 hover:to-indigo-800 shadow-lg shadow-indigo-200 flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-70 disabled:hover:scale-100"
           >
             {isSubmitting ? (
               <>
@@ -1120,7 +1516,7 @@ function CreateOrEditBiddingModal({ onClose, onSuccess, existingData }) {
     </div>
   );
 }
-// Helpers for Single Page and States
+
 function EmptyState({ onCreate }) {
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] text-center animate-fade-in">
@@ -1162,8 +1558,13 @@ function LoadingSkeleton() {
   );
 }
 
-// Keep your existing SingleBiddingAdminPage component here (Logic remains unchanged)
-function SingleBiddingAdminPage({ bid, onBack, adminId, navigate }) {
+function SingleBiddingAdminPage({
+  bid,
+  onBack,
+  adminId,
+  navigate,
+  onViewPayments,
+}) {
   if (!bid)
     return (
       <div className="text-center py-20 font-bold text-slate-400">
@@ -1171,7 +1572,6 @@ function SingleBiddingAdminPage({ bid, onBack, adminId, navigate }) {
       </div>
     );
 
-  // Logic for calculations
   const winners =
     bid.bidding_participants?.filter((p) => p.is_winned_candidate === true) ||
     [];
@@ -1181,7 +1581,7 @@ function SingleBiddingAdminPage({ bid, onBack, adminId, navigate }) {
 
   return (
     <div className="space-y-8 animate-slide-in">
-      {/* 1. Hero Section (Already in your code, styled slightly for consistency) */}
+      {/* 1. Hero Section */}
       <div className="bg-white rounded-[2.5rem] p-10 shadow-sm border border-slate-100">
         <div className="flex justify-between items-start mb-10">
           <div>
@@ -1214,9 +1614,16 @@ function SingleBiddingAdminPage({ bid, onBack, adminId, navigate }) {
             onClick={() =>
               navigate(`/${adminId}/admin-bidding-dashboard/${bid.documentId}`)
             }
-            className="cursor-pointer px-8 py-3 bg-slate-200 border-2 border-slate-500  text-slate-700 rounded-2xl font-bold hover:bg-slate-50 transition-all"
+            className="cursor-pointer px-8 py-3 bg-slate-200 border-2 border-slate-500 text-slate-700 rounded-2xl font-bold hover:bg-slate-50 transition-all"
           >
             Open Admin Panel
+          </button>
+          <button
+            onClick={onViewPayments}
+            className="cursor-pointer  px-8 py-3 bg-emerald-600 text-white rounded-2xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200 flex items-center gap-2"
+          >
+            <Wallet size={18} />
+            View Payments
           </button>
         </div>
       </div>
@@ -1253,7 +1660,6 @@ function SingleBiddingAdminPage({ bid, onBack, adminId, navigate }) {
           </div>
         </div>
 
-        {/* Card 2: Latest Winner */}
         {/* Card 2: Winners Ratio */}
         <div className="bg-white/80 backdrop-blur-md p-8 rounded-[2rem] border border-white shadow-xl shadow-slate-100/50 flex flex-col justify-between">
           <div className="flex items-center gap-4">
@@ -1300,15 +1706,12 @@ function SingleBiddingAdminPage({ bid, onBack, adminId, navigate }) {
             <p className="text-5xl font-black text-slate-900 tracking-tighter">
               {participantCount}
             </p>
-            
           </div>
         </div>
       </div>
 
       {/* Winners Section */}
-      {/* 3. Winners Section (Enhanced) */}
       <div className="bg-white rounded-[2.5rem] p-8 md:p-10 shadow-sm border border-slate-100">
-        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div className="flex items-center gap-5">
             <div className="w-14 h-14 bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl flex items-center justify-center text-2xl shadow-lg shadow-amber-200">
@@ -1325,7 +1728,6 @@ function SingleBiddingAdminPage({ bid, onBack, adminId, navigate }) {
           </div>
         </div>
 
-        {/* Content */}
         {winners.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 bg-slate-50/50 rounded-3xl border-2 border-dashed border-slate-200">
             <div className="text-6xl mb-4 grayscale opacity-40">🏅</div>
@@ -1348,7 +1750,6 @@ function SingleBiddingAdminPage({ bid, onBack, adminId, navigate }) {
                   key={winner.documentId}
                   className={`group relative flex flex-col p-6 rounded-3xl border shadow-sm transition-all duration-300 hover:-translate-y-1.5 cursor-default ${cardBg}`}
                 >
-                  {/* Avatar & Rank Header */}
                   <div className="flex justify-between items-start mb-6">
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center text-xl font-black text-slate-700 border border-slate-100/80">
@@ -1375,7 +1776,6 @@ function SingleBiddingAdminPage({ bid, onBack, adminId, navigate }) {
                     </div>
                   </div>
 
-                  {/* Winner Metadata */}
                   <div className="space-y-3 mt-auto pt-5 border-t border-black/5">
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-slate-500 font-bold text-xs uppercase tracking-wider">
@@ -1420,7 +1820,7 @@ function SingleBiddingAdminPage({ bid, onBack, adminId, navigate }) {
     </div>
   );
 }
-// Injected CSS
+
 const styles = `
   @keyframes cardFadeIn { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
@@ -1433,12 +1833,12 @@ const styles = `
   .animate-pulse-slower { animation: pulse 8s infinite; }
 
   @keyframes zoomIn {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
-}
-.animate-in {
-  animation: zoomIn 0.2s ease-out forwards;
-}
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  .animate-in {
+    animation: zoomIn 0.2s ease-out forwards;
+  }
 `;
 
 if (typeof document !== "undefined") {

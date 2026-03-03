@@ -147,6 +147,7 @@ const BiddingForm = () => {
       );
 
       const result = response.data;
+      console.log(result);
 
       setCandidateInfo({
         name: formData.name,

@@ -16,6 +16,11 @@ import {
   Award,
   Medal,
   Users,
+  CreditCard,
+  UploadCloud,
+  CheckCircle,
+  Download,
+  Copy,
 } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -34,7 +39,7 @@ const ParticipantBiddingPage = () => {
   const [rejectionMessage, setRejectionMessage] = useState("");
   const [userData, setUserData] = useState(null);
   const [winnerLocked, setWinnerLocked] = useState(false);
-  
+
   // 🔹 Track shown winners across sessions using localStorage
   const [shownWinners, setShownWinners] = useState(() => {
     const saved = localStorage.getItem(`shownWinners_${documentId}`);
@@ -79,15 +84,66 @@ const ParticipantBiddingPage = () => {
   const [showWinnerModal, setShowWinnerModal] = useState(false);
   const [winner, setWinner] = useState(null);
 
+  // 🔹 Payment Modal States
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentFile, setPaymentFile] = useState(null);
+  const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
+
   // 🔹 API States
   const [isPlacingBid, setIsPlacingBid] = useState(false);
 
   const percentages = [5, 4, 3, 2];
 
+  // ✅ UNIFIED MATH CALCULATIONS
+  const basePlayAmount = parseInt(playAmount) || 0;
+  const taxAmount = basePlayAmount * 0.04;
+  const totalPoolAmount = basePlayAmount + taxAmount;
+  const maxPeopleCount = biddingData?.maxPeople || 1; // Fallback to 1 to prevent division by zero
+  const amountPerParticipant = (totalPoolAmount / maxPeopleCount).toFixed(2);
+
+  // 🔹 UPI Copy State
+  const [upiCopied, setUpiCopied] = useState(false);
+  const activeUpiId =
+    biddingData?.Upi_Id || biddingData?.Admin_Upi_Id || "Not Provided";
+
+  // Function to Copy UPI ID
+  const handleCopyUpi = () => {
+    if (activeUpiId === "Not Provided") return;
+    navigator.clipboard.writeText(activeUpiId);
+    setUpiCopied(true);
+    setTimeout(() => setUpiCopied(false), 2000); // Reset after 2 seconds
+  };
+
+  // Function to Download QR Code (Mobile Safe)
+  const handleDownloadQr = async () => {
+    if (!qrCodeUrl) return;
+    try {
+      const imageUrl = `https://api.regeve.in${qrCodeUrl}`;
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = `Admin_QR_Code_${documentId}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error("Error downloading QR:", error);
+      showToast("Failed to download QR code.");
+    }
+  };
+
   // Save shown winners to localStorage whenever it changes
   useEffect(() => {
     if (documentId) {
-      localStorage.setItem(`shownWinners_${documentId}`, JSON.stringify(shownWinners));
+      localStorage.setItem(
+        `shownWinners_${documentId}`,
+        JSON.stringify(shownWinners),
+      );
     }
   }, [shownWinners, documentId]);
 
@@ -103,19 +159,70 @@ const ParticipantBiddingPage = () => {
     return new Date(utcDateString);
   };
 
+  // ✅ Detect winner dynamically when declared
+  useEffect(() => {
+    if (!selectedRound) return;
+
+    const roundWinner = findWinnerForRound(selectedRound.Round_Name);
+
+    if (roundWinner && winnerRoundRef.current !== selectedRound.Round_Name) {
+      winnerRoundRef.current = selectedRound.Round_Name;
+
+      setWinner({
+        bidderName: roundWinner.winnerName,
+        bidAmount: parseFloat(roundWinner.amount),
+        time: roundWinner.date,
+        roundName: roundWinner.round,
+        phoneNumber: roundWinner.phoneNumber,
+      });
+
+      setShowWinnerModal(true);
+      setCurrentRoundWinner(roundWinner);
+      setBiddingActive(false);
+    }
+  }, [allWinners, selectedRound]);
+
+  // ✅ AUTO-TRANSITION: Winner Modal -> Payment Modal after 2 seconds
+  // useEffect(() => {
+  //   let timer;
+  //   if (showWinnerModal && winner) {
+  //     timer = setTimeout(() => {
+  //       setShowWinnerModal(false);
+  //       setShowPaymentModal(true);
+  //     }, 2000);
+  //   }
+  //   return () => clearTimeout(timer);
+  // }, [showWinnerModal, winner]);
+
+  // 🔹 Build Participant Photo Map (by phone number)
+  const participantPhotoMap = React.useMemo(() => {
+    if (!biddingData?.bidding_participants) return {};
+
+    const baseURL = "https://api.regeve.in"; // your production API
+    const map = {};
+
+    biddingData.bidding_participants.forEach((p) => {
+      if (p?.Photo?.url) {
+        map[p.phonenumber] = `${baseURL}${p.Photo.url}`;
+      }
+    });
+
+    return map;
+  }, [biddingData]);
+
   // Function to extract month from round name
   const extractMonthFromRoundName = (roundName) => {
-     if (!roundName) return "Other Rounds";
+    if (!roundName) return "Other Rounds";
 
-   const monthMatch = roundName.match(/month[_\s]*(\d+)/i);
-  if (monthMatch) {
-    return `Month ${monthMatch[1]}`;
-  }
+    const monthMatch = roundName.match(/month[_\s]*(\d+)/i);
+    if (monthMatch) {
+      return `Month ${monthMatch[1]}`;
+    }
 
     const weekMatch = roundName.match(/week[_\s]*(\d+)/i);
-  if (weekMatch) {
-    return `Week ${weekMatch[1]}`;
-  }
+    if (weekMatch) {
+      return `Week ${weekMatch[1]}`;
+    }
 
     const monthNames = [
       "January",
@@ -247,7 +354,7 @@ const ParticipantBiddingPage = () => {
   // Function to find winner for a specific round
   const findWinnerForRound = (roundName) => {
     if (!allWinners || allWinners.length === 0) return null;
-    return allWinners.find(winner => winner.round === roundName) || null;
+    return allWinners.find((winner) => winner.round === roundName) || null;
   };
 
   // Function to load round data
@@ -287,6 +394,7 @@ const ParticipantBiddingPage = () => {
         return {
           id: bid.id || Date.now() + Math.random(),
           bidderName: bid.name,
+          phoneNumber: bid.phoneNumber,
           bidAmount: parseFloat(bid.amount),
           remainingAmount: remainingAtBidTime,
           time: new Date(bid.bidTime).toLocaleTimeString([], {
@@ -310,29 +418,6 @@ const ParticipantBiddingPage = () => {
       setBids([]);
       setCurrentRemaining(baseAmount);
     }
-
-    // Show winner modal if round has a winner and not shown before
-    if (roundWinner && !shownWinners[round.Round_Name]) {
-      // Mark this winner as shown
-      setShownWinners(prev => ({
-        ...prev,
-        [round.Round_Name]: true
-      }));
-      
-      setWinner({
-        bidderName: roundWinner.winnerName,
-        bidAmount: parseFloat(roundWinner.amount),
-        time: roundWinner.date,
-        roundName: roundWinner.round,
-        phoneNumber: roundWinner.phoneNumber,
-      });
-
-      setShowWinnerModal(true);
-      setBiddingActive(false);
-      setWinnerLocked(true);
-    }
-    
-    calculateTimeLeft(start, end);
   };
 
   const handleMonthSelect = (month) => {
@@ -563,7 +648,97 @@ const ParticipantBiddingPage = () => {
       console.error("Auto refresh error:", error);
     }
   };
-  
+
+  // 🔹 Handle Payment Submission
+  const handlePaymentSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!paymentFile) {
+      showToast("Please upload a payment proof image.");
+      return;
+    }
+
+    setIsSubmittingPayment(true);
+
+    try {
+      const jwt = localStorage.getItem("jwt");
+
+      // ==============================
+      // 1️⃣ Upload Image
+      // ==============================
+      const formData = new FormData();
+      formData.append("files", paymentFile);
+
+      const uploadResponse = await axios.post(
+        "https://api.regeve.in/api/upload",
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${jwt}`,
+          },
+        },
+      );
+
+      const mediaId = uploadResponse.data[0].id;
+
+      // ==============================
+      // 2️⃣ Dynamic Amount Calculation (Unified)
+      // ==============================
+      const currentRound = biddingData.bidding_rounds.find(
+        (round) => round.Round_Name === roundName,
+      );
+
+      if (!currentRound) {
+        throw new Error("Round not found");
+      }
+
+      // Use the pre-calculated amount based on maxPeople
+      const exactAmount = Number(amountPerParticipant);
+
+      // ==============================
+      // 3️⃣ Correct Payload (Use ID not documentId)
+      // ==============================
+      const payload = {
+        data: {
+          Round_Name: roundName,
+          Amount: exactAmount.toFixed(2),
+          Payment_Proof: mediaId,
+          biddings: [biddingData.id],
+          bidding_participants: [userData.id],
+        },
+      };
+
+      // ==============================
+      // 4️⃣ Execute Request
+      // ==============================
+      await axios.post(
+        "https://api.regeve.in/api/bidding-participant-payments/create",
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${jwt}`,
+          },
+        },
+      );
+
+      setPaymentSuccess(true);
+
+      setTimeout(() => {
+        setShowPaymentModal(false);
+        setPaymentSuccess(false);
+        setPaymentFile(null);
+      }, 3000);
+    } catch (error) {
+      console.error("FULL PAYMENT ERROR:", error.response || error);
+      showToast(
+        error.response?.data?.error?.message ||
+          "Failed to submit payment. Please try again.",
+      );
+    } finally {
+      setIsSubmittingPayment(false);
+    }
+  };
+
   useEffect(() => {
     if (!selectedRound || showWinnerModal || currentRoundWinner) return;
 
@@ -779,6 +954,25 @@ const ParticipantBiddingPage = () => {
 
   const statusInfo = getStatusInfo();
 
+  // Helper inside render to safely extract QR image URL
+  const getQRCodeUrl = () => {
+    if (biddingData?.QR_Code && biddingData.QR_Code.length > 0) {
+      return biddingData.QR_Code[0].url;
+    }
+    if (biddingData?.Admin_QR_Code && biddingData.Admin_QR_Code.length > 0) {
+      return biddingData.Admin_QR_Code[0].url;
+    }
+    if (biddingData?.QR_Code?.url) {
+      return biddingData.QR_Code.url;
+    }
+    if (biddingData?.Admin_QR_Code?.url) {
+      return biddingData.Admin_QR_Code.url;
+    }
+    return null;
+  };
+
+  const qrCodeUrl = getQRCodeUrl();
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] p-4 md:p-6 lg:p-8 font-sans pb-24 lg:pb-10 relative">
       {/* 🟢 TOAST NOTIFICATION FOR ERRORS 🟢 */}
@@ -824,19 +1018,38 @@ const ParticipantBiddingPage = () => {
             >
               {statusInfo.text}
             </span>
-           
           </p>
         </div>
-        <div className="flex items-center gap-3 bg-white px-3 py-2 rounded-xl shadow-sm border border-slate-200 w-full sm:w-auto">
-          <div className="w-7 h-7 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-700 font-bold text-xs shrink-0">
-            {userData?.name?.charAt(0)?.toUpperCase() || mobileNumber.slice(-2)}
+
+        {/* Right Header Section with Pay Button and Profile */}
+        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto justify-end">
+          <button
+            onClick={() => setShowPaymentModal(true)}
+            className="bg-gradient-to-r cursor-pointer  from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-emerald-500/20 transition-all flex items-center gap-2 active:scale-95"
+          >
+            <CreditCard size={18} /> Pay Round
+          </button>
+
+          <div className="flex items-center gap-3 bg-white px-3 py-2 rounded-xl shadow-sm border border-slate-200">
+            <div className="w-7 h-7 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-700 font-bold text-xs shrink-0 overflow-hidden">
+              {participantPhotoMap[mobileNumber] ? (
+                <img
+                  src={participantPhotoMap[mobileNumber]}
+                  alt={userData?.name || "User"}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                userData?.name?.charAt(0)?.toUpperCase() ||
+                mobileNumber.slice(-2)
+              )}
+            </div>
+            <span className="font-bold text-slate-700 text-sm truncate">
+              {userData?.name || `User ${mobileNumber.slice(-4)}`}
+            </span>
+            {userData?.is_verified && (
+              <ShieldCheck size={14} className="text-emerald-500" />
+            )}
           </div>
-          <span className="font-bold text-slate-700 text-sm truncate">
-            {userData?.name || `User ${mobileNumber.slice(-4)}`}
-          </span>
-          {userData?.is_verified && (
-            <ShieldCheck size={14} className="text-emerald-500" />
-          )}
         </div>
       </header>
 
@@ -846,7 +1059,10 @@ const ParticipantBiddingPage = () => {
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
             <div className="flex items-center gap-2 mb-3">
               <Calendar size={18} className="text-indigo-600" />
-              <h3 className="font-bold text-slate-700">Select {biddingData?.durationUnit === "Weekly" ? "Week" : "Month"}</h3>
+              <h3 className="font-bold text-slate-700">
+                Select{" "}
+                {biddingData?.durationUnit === "Weekly" ? "Week" : "Month"}
+              </h3>
             </div>
 
             <div className="flex flex-wrap gap-2">
@@ -879,7 +1095,9 @@ const ParticipantBiddingPage = () => {
                   </h4>
                   <div className="flex flex-wrap gap-2">
                     {roundsByMonth[selectedMonth].map((round, index) => {
-                      const hasWinner = allWinners.some(w => w.round === round.Round_Name);
+                      const hasWinner = allWinners.some(
+                        (w) => w.round === round.Round_Name,
+                      );
                       return (
                         <button
                           key={round.id || index}
@@ -896,7 +1114,9 @@ const ParticipantBiddingPage = () => {
                             }`}
                         >
                           {round.Round_Name || `Round ${index + 1}`}
-                          {hasWinner && <Trophy size={12} className="text-purple-500" />}
+                          {hasWinner && (
+                            <Trophy size={12} className="text-purple-500" />
+                          )}
                         </button>
                       );
                     })}
@@ -923,6 +1143,9 @@ const ParticipantBiddingPage = () => {
                 </h3>
                 <p className="text-xs text-slate-500 mt-2">
                   Current Round: {roundName || "No round selected"}
+                </p>
+                <p className="text-xs text-green-500 mt-2">
+                  Target Amount: {playAmount || "No round selected"}
                 </p>
               </div>
 
@@ -1032,7 +1255,9 @@ const ParticipantBiddingPage = () => {
               {currentRoundWinner && (
                 <div className="flex items-center gap-1.5 bg-purple-50 text-green-700 px-3 py-1.5 rounded-full border border-purple-200">
                   <Medal size={14} />
-                  <span className="text-xs font-bold">Winner: {currentRoundWinner.winnerName}</span>
+                  <span className="text-xs font-bold">
+                    Winner: {currentRoundWinner.winnerName}
+                  </span>
                 </div>
               )}
             </div>
@@ -1065,8 +1290,8 @@ const ParticipantBiddingPage = () => {
                         bid.isWinner
                           ? "border-purple-300 bg-purple-50/50 ring-2 ring-purple-200"
                           : index === 0
-                          ? "border-indigo-100 ring-1 ring-indigo-50"
-                          : "border-slate-100"
+                            ? "border-indigo-100 ring-1 ring-indigo-50"
+                            : "border-slate-100"
                       }`}
                     >
                       {index === 0 && !bid.isWinner && (
@@ -1077,16 +1302,26 @@ const ParticipantBiddingPage = () => {
                       )}
 
                       <div className="flex items-center gap-4 mb-3 sm:mb-0 ml-1">
-                        <div
-                          className={`w-10 h-10 rounded-full flex items-center justify-center font-bold shadow-inner ${
-                            bid.isWinner
-                              ? "bg-gradient-to-br from-purple-500 to-purple-600 text-white"
-                              : index === 0
-                              ? "bg-gradient-to-br from-indigo-500 to-violet-600 text-white"
-                              : "bg-slate-100 text-slate-600"
-                          }`}
-                        >
-                          {bid.bidderName.charAt(0).toUpperCase()}
+                        <div className="w-10 h-10 rounded-full overflow-hidden shadow-inner border border-slate-200">
+                          {participantPhotoMap[bid.phoneNumber] ? (
+                            <img
+                              src={participantPhotoMap[bid.phoneNumber]}
+                              alt={bid.bidderName}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div
+                              className={`w-full h-full flex items-center justify-center font-bold ${
+                                bid.isWinner
+                                  ? "bg-gradient-to-br from-purple-500 to-purple-600 text-white"
+                                  : index === 0
+                                    ? "bg-gradient-to-br from-indigo-500 to-violet-600 text-white"
+                                    : "bg-slate-100 text-slate-600"
+                              }`}
+                            >
+                              {bid.bidderName.charAt(0).toUpperCase()}
+                            </div>
+                          )}
                         </div>
                         <div>
                           <p className="font-bold text-slate-900 text-sm md:text-base flex items-center gap-2">
@@ -1113,9 +1348,13 @@ const ParticipantBiddingPage = () => {
                           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-0.5">
                             Bid Amount
                           </p>
-                          <p className={`font-black text-base md:text-lg ${
-                            bid.isWinner ? "text-purple-600" : "text-indigo-600"
-                          }`}>
+                          <p
+                            className={`font-black text-base md:text-lg ${
+                              bid.isWinner
+                                ? "text-purple-600"
+                                : "text-indigo-600"
+                            }`}
+                          >
                             ₹{bid.bidAmount.toLocaleString()}
                           </p>
                         </div>
@@ -1138,9 +1377,251 @@ const ParticipantBiddingPage = () => {
             )}
           </div>
         </div>
-
-      
       </div>
+
+      {/* 💳 PAYMENT MODAL 💳 */}
+      <AnimatePresence>
+        {showPaymentModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 overflow-y-auto"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 20, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.95, y: 20, opacity: 0 }}
+              className="bg-white p-6 md:p-8 rounded-3xl max-w-lg w-full shadow-2xl relative my-auto border border-slate-100"
+            >
+              <button
+                onClick={() => {
+                  setShowPaymentModal(false);
+                  setPaymentSuccess(false);
+                  setPaymentFile(null);
+                }}
+                className="absolute cursor-pointer top-4 right-4 text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition-colors"
+              >
+                <XCircle size={20} />
+              </button>
+
+              {paymentSuccess ? (
+                <div className="text-center py-8">
+                  <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <CheckCircle className="text-emerald-500" size={40} />
+                  </div>
+                  <h2 className="text-2xl font-black text-slate-800 mb-2">
+                    Payment Submitted!
+                  </h2>
+                  <p className="text-slate-500">
+                    Your payment proof has been successfully uploaded and sent
+                    for verification.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="text-center mb-6">
+                    <h2 className="text-2xl font-black text-slate-900 mb-1">
+                      Pay for Round
+                    </h2>
+                    <p className="text-slate-500 text-sm font-medium">
+                      {biddingData?.nameOfBid} -{" "}
+                      <span className="text-indigo-600 font-bold">
+                        {roundName || selectedMonth}
+                      </span>
+                    </p>
+                  </div>
+
+                  <div className="bg-slate-50 rounded-2xl p-5 mb-6 border border-slate-200">
+                    {/* 1. Show the Math First */}
+                    <div className="space-y-3 mb-5">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                        Calculation Breakdown
+                      </p>
+
+                      <div className="flex justify-between text-sm text-slate-600">
+                        <span className="flex items-center gap-1.5">
+                          <Trophy size={14} className="text-yellow-500" /> Play
+                          Amount
+                        </span>
+                        <span className="font-semibold text-slate-800">
+                          ₹{basePlayAmount.toLocaleString()}
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between text-sm text-slate-600">
+                        <span className="flex items-center gap-1.5">
+                          <Activity size={14} className="text-red-400" />{" "}
+                          Platform Fee (4%)
+                        </span>
+                        <span className="font-semibold text-red-500">
+                          + ₹{taxAmount.toLocaleString()}
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between text-sm font-bold text-slate-800 pt-3 border-t border-slate-200 border-dashed">
+                        <span>Total Pool Amount</span>
+                        <span>₹{totalPoolAmount.toLocaleString()}</span>
+                      </div>
+
+                      <div className="flex justify-between text-sm text-slate-600 pt-1">
+                        <span className="flex items-center gap-1.5">
+                          <Users size={14} className="text-blue-500" /> Max
+                          Participants
+                        </span>
+                        <span className="font-bold text-slate-800 bg-slate-200 px-2 py-0.5 rounded-md">
+                          ÷ {maxPeopleCount}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* 2. Highlight Final Amount to Pay clearly */}
+                    <div className="bg-indigo-600 rounded-xl p-4 text-white flex items-center justify-between shadow-lg shadow-indigo-600/20">
+                      <div>
+                        <p className="text-indigo-200 text-xs font-bold uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                          Exact Amount to Pay
+                        </p>
+                        <p className="text-3xl md:text-4xl font-black tracking-tight">
+                          ₹{amountPerParticipant}
+                        </p>
+                      </div>
+                      <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center shrink-0 backdrop-blur-sm">
+                        <CreditCard size={24} className="text-white" />
+                      </div>
+                    </div>
+                    {/* --- NEW: Due Date Section --- */}
+                    <div className="mt-4 flex items-center gap-3 bg-amber-50 border border-amber-100 rounded-xl p-3">
+                      <div className="bg-amber-100 p-2 rounded-lg">
+                        <Calendar size={18} className="text-amber-600" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black text-amber-600 uppercase tracking-wider">
+                          Payment Deadline
+                        </p>
+                        <p className="text-sm font-bold text-slate-700">
+                          Due within{" "}
+                          <span className="text-amber-700">5 to 7 days</span>{" "}
+                          from today
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Payment Details (UPI & QR) */}
+                  <div className="bg-white rounded-2xl p-5 mb-6 border border-slate-200 shadow-sm text-center">
+                    <p className="text-sm text-slate-500 font-bold mb-3 uppercase tracking-wider">
+                      Admin UPI Details
+                    </p>
+
+                    {/* Touchable UPI Copy Area (Mobile Friendly) */}
+                    <button
+                      type="button"
+                      onClick={handleCopyUpi}
+                      className="w-full relative cursor-pointer flex items-center justify-center gap-3 text-lg font-black text-indigo-700 mb-6 bg-indigo-50 py-3 px-4 rounded-xl border border-indigo-100 hover:bg-indigo-100 transition-colors active:scale-[0.98]"
+                    >
+                      <span className="truncate">{activeUpiId}</span>
+                      {upiCopied ? (
+                        <CheckCircle
+                          size={20}
+                          className="text-emerald-500 shrink-0"
+                        />
+                      ) : (
+                        <Copy size={20} className="text-indigo-400 shrink-0" />
+                      )}
+
+                      {/* Floating 'Copied' badge */}
+                      <AnimatePresence>
+                        {upiCopied && (
+                          <motion.span
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: -20 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute right-2 text-[10px] bg-emerald-500 text-white px-2 py-0.5 rounded-full shadow-md"
+                          >
+                            Copied!
+                          </motion.span>
+                        )}
+                      </AnimatePresence>
+                    </button>
+
+                    {/* QR Code Section */}
+                    {qrCodeUrl ? (
+                      <div className="flex flex-col items-center">
+                        <div className="w-48 h-48 mx-auto border-2 border-slate-100 rounded-xl overflow-hidden p-2 mb-4 bg-white shadow-sm">
+                          <img
+                            src={`https://api.regeve.in${qrCodeUrl}`}
+                            alt="Admin QR Code"
+                            className="w-full h-full object-contain pointer-events-none"
+                          />
+                        </div>
+
+                        {/* Mobile Friendly Download Button */}
+                        <button
+                          type="button"
+                          onClick={handleDownloadQr}
+                          className="flex items-center cursor-pointer justify-center gap-2 w-full max-w-[200px] text-sm font-bold text-slate-700 bg-slate-100 border border-slate-200 hover:bg-slate-200 py-3 rounded-full transition-colors active:scale-95 mx-auto"
+                        >
+                          <Download size={18} className="text-indigo-600" />{" "}
+                          Save QR Code
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="w-48 h-48 mx-auto border-2 border-dashed border-slate-200 rounded-xl flex items-center justify-center text-slate-400 bg-slate-50">
+                        No QR Code
+                      </div>
+                    )}
+                  </div>
+
+                  <form onSubmit={handlePaymentSubmit}>
+                    <div className="mb-6">
+                      <label className="block text-sm font-bold text-slate-700 mb-2">
+                        Upload Payment Proof
+                      </label>
+                      <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-slate-300 border-dashed rounded-2xl cursor-pointer bg-slate-50 hover:bg-slate-100 transition-colors">
+                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                          <UploadCloud className="w-8 h-8 text-slate-400 mb-2" />
+                          <p className="text-sm text-slate-500 font-medium">
+                            {paymentFile ? (
+                              <span className="text-indigo-600">
+                                {paymentFile.name}
+                              </span>
+                            ) : (
+                              "Click to upload screenshot"
+                            )}
+                          </p>
+                        </div>
+                        <input
+                          type="file"
+                          className="hidden"
+                          accept="image/*"
+                          onChange={(e) => setPaymentFile(e.target.files[0])}
+                        />
+                      </label>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={isSubmittingPayment}
+                      className="w-full bg-slate-900 cursor-pointer hover:bg-slate-800 disabled:bg-slate-400 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg active:scale-95"
+                    >
+                      {isSubmittingPayment ? (
+                        <>
+                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                          Submitting...
+                        </>
+                      ) : (
+                        <>
+                          Submit Payment <ArrowRight size={18} />
+                        </>
+                      )}
+                    </button>
+                  </form>
+                </>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* 🌟 WINNER MODAL 🌟 */}
       <AnimatePresence>
@@ -1149,71 +1630,93 @@ const ParticipantBiddingPage = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[200] flex items-center justify-center p-4"
+            className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[200] flex items-center justify-center p-4"
           >
             <motion.div
               initial={{ scale: 0.9, y: 20, opacity: 0 }}
               animate={{ scale: 1, y: 0, opacity: 1 }}
               exit={{ scale: 0.9, y: 20, opacity: 0 }}
-              className="bg-slate-900 p-8 md:p-10 rounded-[2rem] text-center max-w-md w-full shadow-2xl relative overflow-hidden border border-slate-700"
+              className="bg-[#0f1523] p-6 rounded-[2rem] text-center max-w-[340px] w-full shadow-2xl relative"
             >
-              {/* Glow effects in the background */}
-              <div className="absolute top-[-20%] left-[-10%] w-64 h-64 bg-yellow-500/20 rounded-full blur-3xl pointer-events-none"></div>
-              <div className="absolute bottom-[-20%] right-[-10%] w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none"></div>
+              <div className="relative z-10 flex flex-col items-center">
+                {/* Winner Profile Image Section */}
+                <div className="relative w-28 h-28 mb-6 mt-2">
+                  <div className="w-full h-full rounded-full border-[3px] border-[#7a6430] overflow-hidden bg-[#0f1523] flex items-center justify-center">
+                    {participantPhotoMap[winner.phoneNumber] ? (
+                      <img
+                        src={participantPhotoMap[winner.phoneNumber]}
+                        alt={winner.bidderName}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.target.style.display = "none";
+                        }}
+                      />
+                    ) : (
+                      <span className="text-slate-600 text-sm font-medium">
+                        No Image
+                      </span>
+                    )}
+                  </div>
 
-              <div className="relative z-10">
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: "spring", bounce: 0.5, delay: 0.2 }}
-                  className="w-24 h-24 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-[0_0_30px_rgba(234,179,8,0.3)] border-4 border-slate-800"
-                >
-                  <Trophy size={40} className="text-white" />
-                </motion.div>
+                  {/* Small yellow trophy badge */}
+                  <div className="absolute -bottom-1 -right-1 bg-[#f5b301] p-2.5 rounded-full border-[3px] border-[#0f1523]">
+                    <Trophy size={16} className="text-white" />
+                  </div>
+                </div>
 
-                <h2 className="text-3xl md:text-4xl font-black text-white mb-2 tracking-tight">
+                <h2 className="text-[26px] font-black text-white mb-1 tracking-tight">
                   Round Winner!
                 </h2>
-                <p className="text-slate-400 font-medium mb-8 text-sm md:text-base bg-slate-800/50 inline-block px-4 py-1.5 rounded-full border border-slate-700">
+                <p className="text-indigo-400 font-bold mb-6 text-[11px] uppercase tracking-widest">
                   {winner.roundName}
                 </p>
 
-                <div className="bg-slate-800/80 backdrop-blur-md rounded-2xl p-6 mb-8 border border-slate-700 shadow-inner">
-                  <p className="text-xs md:text-sm text-slate-400 mb-1 uppercase tracking-widest font-bold">
-                    Winning Bidder
-                  </p>
-                  <p className="text-xl md:text-2xl font-black text-white mb-2">
-                    {winner.bidderName}
-                  </p>
-                  <p className="text-sm text-slate-400 mb-4">
-                    {winner.phoneNumber}
-                  </p>
+                {/* Inner Dark Card */}
+                <div className="bg-[#161c2d] rounded-[1.5rem] p-6 w-full mb-6 border border-white/5">
+                  <div className="mb-5">
+                    <p className="text-[10px] text-slate-400 uppercase tracking-widest font-black mb-1">
+                      Winning Bidder
+                    </p>
+                    <p className="text-xl font-black text-white leading-tight">
+                      {winner.bidderName}
+                    </p>
+                    <p className="text-slate-400 text-[13px] mt-1 font-medium">
+                      {winner.phoneNumber}
+                    </p>
+                  </div>
 
-                  <div className="w-full h-px bg-slate-700 mb-4"></div>
+                  {/* Faint divider line */}
+                  <div className="w-full h-px bg-slate-700/50 mb-5" />
 
-                  <p className="text-xs md:text-sm text-slate-400 mb-1 uppercase tracking-widest font-bold">
-                    Final Bid Amount
-                  </p>
-                  <p className="text-3xl md:text-4xl font-black bg-gradient-to-r from-yellow-300 to-yellow-500 bg-clip-text text-transparent">
-                    ₹{winner.bidAmount.toLocaleString()}
-                  </p>
+                  <div>
+                    <p className="text-[10px] text-slate-400 uppercase tracking-widest font-black mb-1">
+                      Winning Amount
+                    </p>
+                    <p className="text-[32px] font-black text-[#f5b301] leading-none">
+                      ₹{playAmount}
+                    </p>
+                  </div>
                 </div>
 
+                {/* Solid White Button - Added immediate skip to payment */}
+                {/* Solid White Button - Click to close, then wait 3s for payment */}
                 <button
                   onClick={() => {
-                    setShowWinnerModal(false);
-                    setWinner(null);
+                    setShowWinnerModal(false); // 1. Close Winner Popup immediately
+
+                    setTimeout(() => {
+                      setShowPaymentModal(true); // 2. Open Payment Popup after 3 seconds
+                    }, 3000);
                   }}
-                  className="w-full cursor-pointer bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white px-6 py-4 rounded-xl font-bold transition-all shadow-lg shadow-indigo-500/25 active:scale-95"
+                  className="w-full cursor-pointer bg-white text-black hover:bg-slate-100 px-6 py-3.5 rounded-[1rem] font-black transition-all active:scale-95"
                 >
-                  Close
+                  CLOSE
                 </button>
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
-
       <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 4px; md:width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }

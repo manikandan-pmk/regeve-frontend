@@ -347,7 +347,7 @@ export default function AdminDashboard() {
     "Lucky Draw": {
       id: "luckydraw",
       icon: MdCardGiftcard,
-      title: "Lucky Draw",
+      title: "Lucky Draw & Live Bid",
       description: "Raffles, giveaways, and prize distribution management",
       color: "bg-gradient-to-r from-pink-500 to-rose-600",
       route: "/LuckyDrawHome",

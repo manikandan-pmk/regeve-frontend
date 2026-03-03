@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { io } from "socket.io-client";
-import toast from "react-hot-toast"; // Run: npm install react-hot-toast
+import toast from "react-hot-toast";
 import {
   Calendar,
   Clock,
@@ -25,6 +25,7 @@ import {
   Lock,
   Trash2,
 } from "lucide-react";
+import PaymentPopup from "./PaymentPopup";
 
 const API_URL = "https://api.regeve.in/api";
 
@@ -79,8 +80,7 @@ const CountdownTimer = ({ startTime, endTime, roundNumber, roundStatus }) => {
         return;
       }
 
-      // Round is Active
-      const endTimeToUse = roundEnd || roundStart + 7 * 24 * 60 * 60 * 1000; // Default to 7 days if no endTime
+      const endTimeToUse = roundEnd || roundStart + 7 * 24 * 60 * 60 * 1000;
       const distance = endTimeToUse - now;
 
       setTimeRemaining({
@@ -215,13 +215,158 @@ const AdminBiddingDashboard = () => {
   const [biddingConfig, setBiddingConfig] = useState(null);
   const [onlineParticipants, setOnlineParticipants] = useState([]);
   const [socket, setSocket] = useState(null);
-  const [showDeleteModal, setShowDeleteModal] = useState(false); // Add state for delete modal
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  const [showPaymentPopup, setShowPaymentPopup] = useState(false);
+
+  // ─── PAYMENT VERIFICATION STATE ───────────────────────────────────────────
+  // Derived from API: is the LATEST admin payment record verified?
+  const [isPaymentVerified, setIsPaymentVerified] = useState(false);
+  // Which round number is the current verified payment for?
+  const [verifiedForRoundNumber, setVerifiedForRoundNumber] = useState(null);
+  // ──────────────────────────────────────────────────────────────────────────
+
+  const [showPaymentError, setShowPaymentError] = useState(false);
+  const [paymentErrorMessage, setPaymentErrorMessage] = useState("");
 
   const handleCopyLink = () => {
     const participantUrl = `${window.location.origin}/#/${adminId || "admin"}/participant-bidding/${documentId}`;
     navigator.clipboard.writeText(participantUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  // ─── DERIVE PAYMENT STATUS FROM biddingConfig ─────────────────────────────
+  /**
+   * Rules:
+   * 1. Look at biddingConfig.bidding_admin_payment (single object from API).
+   * 2. The payment record has Round_Name (e.g. "Month 1") and Is_Payment_Verified.
+   * 3. Parse the round number from Round_Name.
+   * 4. setIsPaymentVerified = Is_Payment_Verified
+   * 5. setVerifiedForRoundNumber = parsed number from Round_Name
+   */
+  useEffect(() => {
+    if (!biddingConfig) return;
+
+    const payments = biddingConfig.bidding_admin_payments || [];
+
+    if (!payments.length) {
+      setIsPaymentVerified(false);
+      setVerifiedForRoundNumber(null);
+      return;
+    }
+
+    // ✅ Sort by createdAt (latest first)
+    const sortedPayments = [...payments].sort(
+      (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
+    );
+
+    const latestPayment = sortedPayments[0];
+
+    const verified = latestPayment.Is_Payment_Verified === true;
+    setIsPaymentVerified(verified);
+
+    // Parse round number (Week 1 → 1)
+    const match = latestPayment.Round_Name?.match(/\d+/);
+    const roundNum = match ? parseInt(match[0]) : null;
+
+    setVerifiedForRoundNumber(roundNum);
+  }, [biddingConfig]);
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Check if the admin is allowed to create the NEXT round.
+   *
+   * nextRoundNumber = rounds.length + 1
+   *
+   * Conditions to ALLOW creation:
+   *   A) nextRoundNumber === 1 (first round):
+   *      → payment must be verified for round 1
+   *        (verifiedForRoundNumber === 1 && isPaymentVerified)
+   *
+   *   B) nextRoundNumber > 1 (subsequent rounds):
+   *      → The PREVIOUS round (nextRoundNumber - 1) must have ended
+   *      → Payment must be verified for this nextRoundNumber
+   *        (verifiedForRoundNumber === nextRoundNumber && isPaymentVerified)
+   *
+   * Returns { allowed: bool, reason: string }
+   */
+  const checkCanCreateRound = () => {
+    const nextRoundNumber = rounds.length + 1;
+    const durationUnit = biddingConfig?.durationUnit || "Monthly";
+    const cycleLabel =
+      durationUnit === "Weekly"
+        ? "Week"
+        : durationUnit === "Daily"
+          ? "Day"
+          : "Month";
+
+    // Check max rounds
+    const maxRounds = biddingConfig?.durationValue || 0;
+    if (maxRounds > 0 && rounds.length >= maxRounds) {
+      return {
+        allowed: false,
+        reason: `Maximum ${maxRounds} rounds reached. No more rounds can be created.`,
+      };
+    }
+
+    // For rounds beyond the first, the previous round must have ended
+    if (nextRoundNumber > 1) {
+      const previousRound = rounds.find((r) => {
+        const num = r.Round_Name?.match(/\d+/);
+        return num && parseInt(num[0]) === nextRoundNumber - 1;
+      });
+
+      if (!previousRound) {
+        return {
+          allowed: false,
+          reason: `${cycleLabel} ${nextRoundNumber - 1} not found. Cannot create next round.`,
+        };
+      }
+
+      const now = new Date().getTime();
+      const prevEnd = previousRound.endTime
+        ? new Date(previousRound.endTime).getTime()
+        : null;
+      const prevEnded =
+        previousRound.roundStatus === "Ended" || (prevEnd && now > prevEnd);
+
+      if (!prevEnded) {
+        return {
+          allowed: false,
+          reason: `${cycleLabel} ${nextRoundNumber - 1} has not ended yet. You can only create ${cycleLabel} ${nextRoundNumber} after it ends.`,
+        };
+      }
+    }
+
+    // Payment must be verified for this specific round number
+    if (!isPaymentVerified) {
+      return {
+        allowed: false,
+        reason: `Payment for ${cycleLabel} ${nextRoundNumber} has not been verified yet. Please complete payment and wait for admin approval.`,
+      };
+    }
+
+    if (verifiedForRoundNumber !== nextRoundNumber) {
+      return {
+        allowed: false,
+        reason: `Payment was verified for ${cycleLabel} ${verifiedForRoundNumber}, but you are trying to create ${cycleLabel} ${nextRoundNumber}. Please pay for ${cycleLabel} ${nextRoundNumber}.`,
+      };
+    }
+
+    return { allowed: true, reason: "" };
+  };
+
+  const handlePaymentSuccess = () => {
+    setShowPaymentPopup(false);
+
+    toast.success("Payment proof submitted! Waiting for verification.", {
+      duration: 4000,
+      position: "top-center",
+    });
+
+    // Refresh config to get latest payment status
+    fetchBiddingConfig();
   };
 
   // Edit State
@@ -282,12 +427,15 @@ const AdminBiddingDashboard = () => {
   // Fetch Bidding Configuration
   const fetchBiddingConfig = async () => {
     try {
-      const response = await axios.get(
-        `${API_URL}/biddings/public/${documentId}`,
-      );
+      const token = localStorage.getItem("jwt");
+
+      const response = await axios.get(`${API_URL}/biddings/${documentId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
       if (response.data?.data) {
         setBiddingConfig(response.data.data);
-        // Set default values based on config
         setNewRound((prev) => ({
           ...prev,
           durationType: response.data.data.durationUnit || "Weekly",
@@ -316,11 +464,9 @@ const AdminBiddingDashboard = () => {
 
       setRounds(dataList);
 
-      // Determine LIVE round
       if (dataList.length > 0) {
         const now = new Date().getTime();
 
-        // Find active round
         const activeRound = dataList.find((round) => {
           const start = new Date(round.startTime).getTime();
           const end = round.endTime
@@ -336,7 +482,6 @@ const AdminBiddingDashboard = () => {
           }
         }
 
-        // If documentId provided, find that specific round
         if (documentId) {
           const foundRound = dataList.find((r) => r.documentId === documentId);
           if (foundRound) {
@@ -361,11 +506,8 @@ const AdminBiddingDashboard = () => {
     }
   };
 
-  // Updated handleDeleteRound with toast notifications
   const handleDeleteRound = async () => {
     if (!selectedRound) return;
-
-    // Show custom delete confirmation modal (you can create a styled modal instead)
     setShowDeleteModal(true);
   };
 
@@ -379,7 +521,6 @@ const AdminBiddingDashboard = () => {
         { headers: { Authorization: `Bearer ${token}` } },
       );
 
-      // Animated Success Message
       toast.success(`${selectedRound.Round_Name} has been deleted.`, {
         duration: 4000,
         position: "top-center",
@@ -391,13 +532,11 @@ const AdminBiddingDashboard = () => {
         },
       });
 
-      // Local State Update
       const updatedRounds = rounds.filter(
         (r) => r.documentId !== selectedRound.documentId,
       );
       setRounds(updatedRounds);
 
-      // Auto-select next available round
       if (updatedRounds.length > 0) {
         setSelectedRound(updatedRounds[0]);
       } else {
@@ -425,13 +564,13 @@ const AdminBiddingDashboard = () => {
     if (!documentId) return;
 
     const interval = setInterval(() => {
-      fetchRounds(true); // silent refresh
-    }, 4000); // every 4 seconds
+      fetchRounds(true);
+      fetchBiddingConfig(); // also refresh payment status silently
+    }, 4000);
 
     return () => clearInterval(interval);
   }, [documentId]);
 
-  // Update newRound when rounds change
   useEffect(() => {
     if (biddingConfig) {
       setNewRound((prev) => ({
@@ -443,7 +582,29 @@ const AdminBiddingDashboard = () => {
     }
   }, [rounds, biddingConfig]);
 
-  // Handle Edit Mode Toggle
+  // ─── OPEN CREATE ROUND MODAL (with validation) ────────────────────────────
+  const handleOpenCreateRoundModal = () => {
+    const { allowed, reason } = checkCanCreateRound();
+
+    if (!allowed) {
+      setPaymentErrorMessage(reason);
+      setShowPaymentError(true);
+      return;
+    }
+
+    setNewRound({
+      durationType: biddingConfig?.durationUnit || "Weekly",
+      roundNumber: rounds.length + 1,
+      startTime: "",
+      endTime: "",
+      totalAmount: biddingConfig?.amount || "",
+      Final_Ratio: 0,
+    });
+
+    setShowCreateRoundModal(true);
+  };
+  // ──────────────────────────────────────────────────────────────────────────
+
   const handleEditRound = () => {
     setEditedRound({
       ...selectedRound,
@@ -474,6 +635,15 @@ const AdminBiddingDashboard = () => {
 
   // Handle Create Round
   const handleCreateRound = async () => {
+    // Re-validate at submit time as well
+    const { allowed, reason } = checkCanCreateRound();
+    if (!allowed) {
+      setPaymentErrorMessage(reason);
+      setShowPaymentError(true);
+      setShowCreateRoundModal(false);
+      return;
+    }
+
     if (
       !newRound.startTime ||
       !newRound.endTime ||
@@ -491,7 +661,6 @@ const AdminBiddingDashboard = () => {
     try {
       const token = localStorage.getItem("jwt");
 
-      // Calculate playAmount based on totalAmount and Final_Ratio
       const playAmount = calculateReducedAmount(
         newRound.totalAmount,
         newRound.Final_Ratio,
@@ -557,7 +726,6 @@ const AdminBiddingDashboard = () => {
     }
   };
 
-  // Handle Saving Round Configuration
   const handleSaveRound = async () => {
     if (!editedRound) return;
 
@@ -595,7 +763,6 @@ const AdminBiddingDashboard = () => {
         },
       );
 
-      // Update local state
       const updatedRound = {
         ...selectedRound,
         Round_Name:
@@ -651,14 +818,12 @@ const AdminBiddingDashboard = () => {
     });
   };
 
-  // Get round number from Round_Name
   const getRoundNumber = (roundName) => {
     if (!roundName) return 1;
     const match = roundName.match(/\d+/);
     return match ? parseInt(match[0]) : 1;
   };
 
-  // Get duration type from Round_Name
   const getDurationType = (roundName) => {
     if (!roundName) return "Weekly";
     return roundName.includes("Week") ? "Weekly" : "Monthly";
@@ -710,19 +875,8 @@ const AdminBiddingDashboard = () => {
             )}
             <button
               disabled={isMaxRoundsReached}
-              onClick={() => {
-                if (isMaxRoundsReached) return;
-                setNewRound({
-                  durationType: biddingConfig?.durationUnit || "Weekly",
-                  roundNumber: rounds.length + 1,
-                  startTime: "",
-                  endTime: "",
-                  totalAmount: biddingConfig?.amount || "",
-                  Final_Ratio: 0,
-                });
-                setShowCreateRoundModal(true);
-              }}
-              className="p-2 cursor-pointer bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-colors"
+              onClick={handleOpenCreateRoundModal}
+              className="p-2 cursor-pointer bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               title="Create New Round"
             >
               <PlusCircle size={18} />
@@ -804,19 +958,37 @@ const AdminBiddingDashboard = () => {
             </p>
           </div>
           <div className="flex items-center gap-6">
-            {/* Total Pool Amount */}
-            <div className="flex items-center gap-3 bg-white px-5 py-3 rounded-2xl border border-slate-100 shadow-sm">
-              <div className="bg-indigo-50 p-2 rounded-xl text-indigo-600">
-                <DollarSign size={18} />
-              </div>
-              <div>
-                <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
-                  Pool Amount
-                </p>
-                <p className="text-lg font-black leading-none">
-                  ₹{selectedRound?.playAmount?.toLocaleString() || "0"}
-                </p>
-              </div>
+            {/* Payment status badge */}
+            <div className="flex flex-col items-end">
+              <button
+                onClick={() => setShowPaymentPopup(true)}
+                className="px-6 py-3 bg-emerald-600 cursor-pointer text-white rounded-2xl font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200 transition-all"
+              >
+                💳 Pay Now
+              </button>
+              {(() => {
+                const payments = biddingConfig?.bidding_admin_payments || [];
+
+                if (!payments.length) return null;
+
+                const latestPayment = [...payments].sort(
+                  (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
+                )[0];
+
+                return (
+                  <span
+                    className={`text-[10px] font-bold mt-1 uppercase tracking-widest ${
+                      latestPayment.Is_Payment_Verified
+                        ? "text-emerald-600"
+                        : "text-amber-500"
+                    }`}
+                  >
+                    {latestPayment.Is_Payment_Verified
+                      ? `✓ Payment Verified (${latestPayment.Round_Name})`
+                      : `⏳ Awaiting Verification (${latestPayment.Round_Name})`}
+                  </span>
+                );
+              })()}
             </div>
 
             {/* Copy Link Button */}
@@ -841,8 +1013,6 @@ const AdminBiddingDashboard = () => {
                 window.location.reload();
                 fetchRounds();
               }}
-              
-              
               className="p-4 bg-white cursor-pointer border border-slate-100 rounded-2xl text-slate-500 hover:text-indigo-600 hover:shadow-lg transition-all"
             >
               <RefreshCw size={20} />
@@ -981,34 +1151,28 @@ const AdminBiddingDashboard = () => {
                   <div className="space-y-6 animate-fade-in">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                       <div className="space-y-4">
-                        {/* Duration Type */}
                         <div>
                           <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
                             Duration Type
                           </label>
-
                           <div className="w-full mt-1 px-4 py-3 border-2 border-slate-100 bg-white rounded-xl font-bold text-slate-700">
                             {editedRound?.durationType || "—"}
                           </div>
                         </div>
 
-                        {/* Round Number */}
                         <div>
                           <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
                             Round Number
                           </label>
-
                           <div className="w-full mt-1 px-4 py-3 border-2 border-slate-100 bg-white rounded-xl font-bold text-slate-700">
                             {editedRound?.roundNumber || "—"}
                           </div>
                         </div>
 
-                        {/* Total Amount */}
                         <div>
                           <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
                             Total Amount (₹)
                           </label>
-
                           <div className="w-full mt-1 px-4 py-3 border-2 border-slate-100 bg-white rounded-xl font-bold text-slate-700">
                             ₹{" "}
                             {editedRound?.totalAmount
@@ -1146,17 +1310,7 @@ const AdminBiddingDashboard = () => {
                 Create your first bidding round
               </p>
               <button
-                onClick={() => {
-                  setNewRound({
-                    durationType: biddingConfig?.durationUnit || "Weekly",
-                    roundNumber: 1,
-                    startTime: "",
-                    endTime: "",
-                    totalAmount: biddingConfig?.amount || "",
-                    Final_Ratio: 40,
-                  });
-                  setShowCreateRoundModal(true);
-                }}
+                onClick={handleOpenCreateRoundModal}
                 className="mt-4 px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all flex items-center gap-2"
               >
                 <PlusCircle size={18} />
@@ -1234,7 +1388,6 @@ const AdminBiddingDashboard = () => {
                       (() => {
                         const history = selectedRound.Bidding_History || [];
 
-                        // 1️⃣ Sort oldest first (for correct calculation)
                         const sortedOldestFirst = [...history].sort(
                           (a, b) => new Date(a.bidTime) - new Date(b.bidTime),
                         );
@@ -1247,7 +1400,6 @@ const AdminBiddingDashboard = () => {
 
                         let runningAmount = totalAmount;
 
-                        // 2️⃣ Calculate remaining for each bid
                         const processed = sortedOldestFirst.map((bid) => {
                           const bidAmount = parseInt(bid.amount) || 0;
                           runningAmount -= bidAmount;
@@ -1259,7 +1411,6 @@ const AdminBiddingDashboard = () => {
                           };
                         });
 
-                        // 3️⃣ Reverse so latest shows first
                         const latestFirst = processed.reverse();
 
                         return latestFirst.map((bid, index) => {
@@ -1331,9 +1482,7 @@ const AdminBiddingDashboard = () => {
       {/* Create Round Modal */}
       {showCreateRoundModal && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          {/* Widened to max-w-4xl, removed max-h and overflow-y-auto to prevent scrolling */}
           <div className="bg-white rounded-[2rem] max-w-4xl w-full shadow-2xl flex flex-col">
-            {/* Header */}
             <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between rounded-t-[2rem]">
               <h2 className="text-xl font-black text-slate-800">
                 Create New Round
@@ -1346,9 +1495,7 @@ const AdminBiddingDashboard = () => {
               </button>
             </div>
 
-            {/* Body - Left/Right Split Layout */}
             <div className="p-6 grid grid-cols-1 md:grid-cols-12 gap-6">
-              {/* Left Side: Form Inputs (7 Columns) */}
               <div className="md:col-span-7 space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -1445,7 +1592,6 @@ const AdminBiddingDashboard = () => {
                 </div>
               </div>
 
-              {/* Right Side: Preview Panel (5 Columns) */}
               <div className="md:col-span-5 flex h-full">
                 <div className="p-6 bg-indigo-50 rounded-2xl w-full flex flex-col justify-center items-center text-center">
                   <p className="text-sm font-bold text-indigo-700 mb-2 uppercase tracking-wider">
@@ -1486,7 +1632,6 @@ const AdminBiddingDashboard = () => {
               </div>
             </div>
 
-            {/* Footer */}
             <div className="px-6 py-5 border-t border-slate-100 flex justify-end gap-3 rounded-b-[2rem] bg-white">
               <button
                 onClick={() => setShowCreateRoundModal(false)}
@@ -1515,7 +1660,6 @@ const AdminBiddingDashboard = () => {
       {showDeleteModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
           <div className="bg-white rounded-[2.5rem] max-w-md w-full shadow-[0_20px_50px_rgba(0,0,0,0.15)] overflow-hidden transform transition-all">
-            {/* Visual Indicator Section */}
             <div className="pt-10 pb-4 flex flex-col items-center">
               <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mb-4">
                 <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center text-red-600">
@@ -1527,7 +1671,6 @@ const AdminBiddingDashboard = () => {
               </h2>
             </div>
 
-            {/* Content */}
             <div className="px-10 pb-8 text-center">
               <p className="text-slate-500 leading-relaxed text-lg">
                 Are you sure you want to remove <br />
@@ -1541,7 +1684,6 @@ const AdminBiddingDashboard = () => {
               </p>
             </div>
 
-            {/* Action Buttons */}
             <div className="p-6 bg-slate-50/80 flex flex-col sm:flex-row gap-3">
               <button
                 onClick={() => setShowDeleteModal(false)}
@@ -1582,6 +1724,70 @@ const AdminBiddingDashboard = () => {
           </div>
         </div>
       )}
+
+      {/* Payment Popup - GLOBAL */}
+      <PaymentPopup
+        isOpen={showPaymentPopup}
+        onClose={() => setShowPaymentPopup(false)}
+        round={selectedRound}
+        biddingConfig={biddingConfig}
+        adminId={adminId}
+        biddingDocumentId={documentId}
+        onPaymentSuccess={handlePaymentSuccess}
+      />
+
+      {/* PAYMENT REQUIRED / ROUND BLOCKED MODAL */}
+      {showPaymentError && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[9999]">
+          <div className="bg-white rounded-[2rem] p-8 max-w-md w-full shadow-2xl text-center animate-scale-in">
+            <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-5">
+              <AlertCircle size={32} className="text-red-600" />
+            </div>
+
+            <h2 className="text-2xl font-black text-slate-800 mb-3">
+              Cannot Create Round
+            </h2>
+
+            <p className="text-slate-500 font-bold mb-8">
+              {paymentErrorMessage}
+            </p>
+
+            <div className="flex gap-4">
+              <button
+                onClick={() => setShowPaymentError(false)}
+                className="flex-1 py-3 bg-slate-100 rounded-xl font-bold hover:bg-slate-200"
+              >
+                Cancel
+              </button>
+
+              {/* Only show Pay Now if the block reason is payment-related */}
+              {(paymentErrorMessage.includes("Payment") ||
+                paymentErrorMessage.includes("payment") ||
+                paymentErrorMessage.includes("verified")) && (
+                <button
+                  onClick={() => {
+                    setShowPaymentError(false);
+                    setShowPaymentPopup(true);
+                  }}
+                  className="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 shadow-lg"
+                >
+                  Pay Now
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes scaleIn {
+          from { transform: scale(0.9); opacity: 0; }
+          to { transform: scale(1); opacity: 1; }
+        }
+        .animate-scale-in {
+          animation: scaleIn 0.25s ease-out;
+        }
+      `}</style>
     </div>
   );
 };
