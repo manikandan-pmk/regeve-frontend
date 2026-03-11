@@ -31,10 +31,12 @@ const PaymentPopup = ({
 
   const [adminUpiId, setAdminUpiId] = useState(null);
   const [adminQrUrl, setAdminQrUrl] = useState(null);
+  const [adminAmount, setAdminAmount] = useState(0);
 
   // ─── STATIC CONFIG ────────────────────────────────────────────────────────
   const totalAmount = parseFloat(biddingConfig?.amount) || 0;
-  const administrativeFee = (totalAmount * 0.04).toFixed(2);
+  // const administrativeFee = (totalAmount * 0.002).toFixed(2);
+  const administrativeFee =adminAmount; // 4% fee
   const totalRounds = biddingConfig?.durationValue || 1;
   const durationUnit = biddingConfig?.durationUnit || "Monthly";
   const cycleLabel =
@@ -154,6 +156,7 @@ const PaymentPopup = ({
         const adminData = res.data?.data?.[0];
         if (adminData) {
           setAdminUpiId(adminData.Upi_Id);
+          setAdminAmount(adminData.Amount || 0);
           const qrImage = adminData.QRcode?.[0];
           if (qrImage?.url) setAdminQrUrl(`https://api.regeve.in${qrImage.url}`);
         }
@@ -417,7 +420,7 @@ const PaymentPopup = ({
 
               <div className="bg-white/5 border border-white/10 p-4 rounded-2xl backdrop-blur-md">
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-[10px] text-slate-400 uppercase font-semibold">Admin Fee (4%)</span>
+                  <span className="text-[10px] text-slate-400 uppercase font-semibold">Admin Fee</span>
                   <span className="text-[10px] bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-full">Calculated</span>
                 </div>
                 <p className="text-3xl font-black text-white">₹{administrativeFee}</p>

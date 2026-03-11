@@ -703,8 +703,8 @@ const ParticipantBiddingPage = () => {
           Round_Name: roundName,
           Amount: exactAmount.toFixed(2),
           Payment_Proof: mediaId,
-          biddings: [biddingData.id],
-          bidding_participants: [userData.id],
+          bidding: [biddingData.id],
+          bidding_participant: [userData.id],
         },
       };
 
@@ -1452,7 +1452,7 @@ const ParticipantBiddingPage = () => {
                       <div className="flex justify-between text-sm text-slate-600">
                         <span className="flex items-center gap-1.5">
                           <Activity size={14} className="text-red-400" />{" "}
-                          Platform Fee (4%)
+                          Platform Fee 
                         </span>
                         <span className="font-semibold text-red-500">
                           + ₹{taxAmount.toLocaleString()}

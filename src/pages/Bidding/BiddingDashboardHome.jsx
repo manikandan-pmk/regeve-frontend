@@ -53,7 +53,6 @@ export default function BiddingDashboard() {
   const [selectedPaymentBid, setSelectedPaymentBid] = useState(null);
   const [paymentParticipants, setPaymentParticipants] = useState([]);
   const [isLoadingPayments, setIsLoadingPayments] = useState(false);
-  
 
   const fetchBiddings = async () => {
     try {
@@ -951,33 +950,33 @@ function PaymentVerificationModal({
         </div>
       </div>
       {previewImage && (
-  <div
-    className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/70 backdrop-blur-sm"
-    onClick={() => setPreviewImage(null)}
-  >
-    <div
-      className="relative max-w-3xl w-full mx-4 bg-white rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200"
-      onClick={(e) => e.stopPropagation()}
-    >
-      <button
-        onClick={() => setPreviewImage(null)}
-        className="absolute top-4 right-4 bg-white/80 hover:bg-white text-slate-600 hover:text-slate-900 p-2 rounded-xl shadow-md transition"
-      >
-        <X size={18} />
-      </button>
+        <div
+          className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/70 backdrop-blur-sm"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div
+            className="relative max-w-3xl w-full mx-4 bg-white rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setPreviewImage(null)}
+              className="absolute top-4 right-4 bg-white/80 hover:bg-white text-slate-600 hover:text-slate-900 p-2 rounded-xl shadow-md transition"
+            >
+              <X size={18} />
+            </button>
 
-      <div className="p-4 flex items-center justify-center bg-slate-50">
-        <img
-          src={previewImage}
-          alt="Payment Proof Preview"
-          className="max-h-[80vh] object-contain rounded-xl"
-        />
-      </div>
-    </div>
-  </div>
-)}
+            <div className="p-4 flex items-center justify-center bg-slate-50">
+              <img
+                src={previewImage}
+                alt="Payment Proof Preview"
+                className="max-h-[80vh] object-contain rounded-xl"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>,
-    
+
     document.body,
   );
 }
@@ -1688,9 +1687,7 @@ function SingleBiddingAdminPage({
         {/* Card 3: Participants */}
         <div
           onClick={() =>
-            navigate(
-              `/${adminId}/bidding-dashboard/${bid.documentId}/participants`,
-            )
+           navigate(`/${adminId}/bidding-participants/${bid.documentId}`)
           }
           className="group bg-white/80 backdrop-blur-md p-8 rounded-[2rem] border border-white shadow-xl shadow-slate-100/50 flex flex-col justify-between cursor-pointer hover:border-indigo-200 transition-all"
         >
@@ -1752,10 +1749,20 @@ function SingleBiddingAdminPage({
                 >
                   <div className="flex justify-between items-start mb-6">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center text-xl font-black text-slate-700 border border-slate-100/80">
-                        {winner.name
-                          ? winner.name.charAt(0).toUpperCase()
-                          : "👤"}
+                      <div className="w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center border border-slate-100/80 overflow-hidden">
+                        {winner.Photo?.url ? (
+                          <img
+                            src={`https://api.regeve.in${winner.Photo.url}`}
+                            alt={winner.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <span className="text-xl font-black text-slate-700">
+                            {winner.name
+                              ? winner.name.charAt(0).toUpperCase()
+                              : "👤"}
+                          </span>
+                        )}
                       </div>
                       <div>
                         <span
