@@ -1,7 +1,7 @@
 import axios from "axios";
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Logo1 from "/basf-logo.jpg";
+import { useParams } from "react-router-dom";
 
 export default function EventForm() {
   const defaultForm = {
@@ -10,12 +10,12 @@ export default function EventForm() {
     Company_ID: "",
     WhatsApp_Number: "",
     Email: "",
-    Adult_Count: "0", // Default to 1 for self
+    Adult_Count: "0",
     Children_Count: "0",
     Veg_Count: "",
     Non_Veg_Count: "",
-    Travel_Mode: "", // New field for travel mode
-    Pickup_Location: "", // New field for pickup location
+    Travel_Mode: "",
+    Pickup_Location: "",
     Self: "1",
     coming_to_family_day: "",
   };
@@ -26,111 +26,35 @@ export default function EventForm() {
   const [photo, setPhoto] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // For company ID suggestions
-  const [searchResults, setSearchResults] = useState([]);
-  const [isStaffFound, setIsStaffFound] = useState(null);
-  const [isWhatsAppRegistered, setIsWhatsAppRegistered] = useState(null);
-
   // Popup state
   const [showPopup, setShowPopup] = useState(false);
   const [memberData, setMemberData] = useState(null);
-  const [isRegistered, setIsRegistered] = useState(null);
+  const { adminId, documentId } = useParams();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
 
+    // WhatsApp number – only digits, max 10
     if (name === "WhatsApp_Number") {
       const numericValue = value.replace(/\D/g, "").slice(0, 10);
-
       setForm({ ...form, WhatsApp_Number: numericValue });
-
-      if (numericValue.length === 10) {
-        axios
-          .get("https://api.regeve.in/api/")
-          .then((res) => {
-            const all = res.data.data;
-
-            const phoneMatch = all.filter(
-              (item) =>
-                String(item.WhatsApp_Number).trim() === numericValue.trim()
-            );
-
-            if (phoneMatch.length > 0) {
-              setIsWhatsAppRegistered(true);
-            } else {
-              setIsWhatsAppRegistered(false);
-            }
-          })
-          .catch(() => setIsWhatsAppRegistered(false));
-      }
-
       return;
     }
 
-    // Company ID logic
+    // Company ID – only digits, max 8, and reset dependent fields
     if (name === "Company_ID") {
       const numericValue = value.replace(/\D/g, "").slice(0, 8);
-
       setForm({
         ...form,
         [name]: numericValue,
-        Name: "", // reset name
+        Name: "",
         WhatsApp_Number: "",
         Email: "",
       });
-
-      setIsRegistered(null);
-      setSearchResults([]);
-
-      // 🟦 1️⃣ STAFF SEARCH
-      if (numericValue.length >= 3) {
-        axios
-          .get(`https://api.regeve.in/api//${numericValue}`)
-          .then((res) => {
-            if (res.data?.data) {
-              setSearchResults([res.data.data]);
-              setIsStaffFound(true);
-              setForm((prev) => ({
-                ...prev,
-                Name: res.data.data.Name,
-              }));
-            } else {
-              setSearchResults([]);
-              setIsStaffFound(false);
-            }
-          })
-          .catch(() => {
-            setSearchResults([]);
-            setIsStaffFound(false);
-          });
-      }
-
-      // 🟩 2️⃣ CHECK IF ALREADY REGISTERED
-      // 🔥 FIXED STRICT CHECK — AVOID FALSE REGISTERED FLAG
-      if (numericValue.length === 8) {
-        axios
-          .get(`https://api.regeve.in/api/`)
-          .then((res) => {
-            const all = res.data.data;
-
-            // Strict match with your API structure
-            const exactMatch = all.filter(
-              (item) => String(item.Company_ID).trim() === numericValue.trim()
-            );
-
-            if (exactMatch.length > 0) {
-              setIsRegistered(true);
-            } else {
-              setIsRegistered(false);
-            }
-          })
-          .catch(() => setIsRegistered(false));
-      }
-
       return;
     }
 
-    // ✅ For all other fields update normally
+    // All other fields
     setForm({ ...form, [name]: value });
   };
 
@@ -151,7 +75,7 @@ export default function EventForm() {
     setIsLoading(true);
 
     try {
-      // Only validate food & person count when the user is coming
+      // Validate food counts only if coming
       if (form.coming_to_family_day === "Yes") {
         const totalPersons =
           Number(form.Self) +
@@ -163,7 +87,7 @@ export default function EventForm() {
 
         if (totalPersons !== totalFoodCount) {
           alert(
-            `Total Persons (${totalPersons}) must match Veg + Non-Veg Count (${totalFoodCount})`
+            `Total Persons (${totalPersons}) must match Veg + Non-Veg Count (${totalFoodCount})`,
           );
           setIsLoading(false);
           return;
@@ -172,37 +96,39 @@ export default function EventForm() {
 
       let photoId = null;
 
-      // Upload photo first
+      // Upload photo if present
       if (photo) {
         photoId = await uploadPhoto(photo);
       }
 
-      // Save form with uploaded photo ID
+      // Prepare data for submission
+      const submissionData = {
+        ...form,
+        Photo: photoId,
+        Company_ID: adminId,
+        Event_ID: documentId,
+      };
+
+      // POST to the correct endpoint
       const response = await axios.post(
-        "https://api.regeve.in/api/event-forms",
+        "https://api.regeve.in/api/event-management-form",
         {
-          data: {
-            ...form,
-            Photo: photoId,
-          },
-        }
+          data: submissionData,
+        },
       );
 
       console.log("SUCCESS:", response.data);
 
-      const memberId = response.data.data.Member_ID;
+      // The backend returns the created entry in response.data.data
+      const createdEntry = response.data.data;
 
-      // Fetch user details using Member_ID
-      const userDetails = await axios.get(
-        `https://api.regeve.in/api/event-forms`
-      );
-
-      setMemberData(userDetails.data.data);
+      // Set member data from the response (includes Member_ID, Name, Email, etc.)
+      setMemberData(createdEntry);
       setShowPopup(true);
 
       // Reset form
-      setForm(defaultForm);
-      setPhoto(null);
+      // setForm(defaultForm);
+      // setPhoto(null);
     } catch (error) {
       console.error("ERROR:", error.response?.data || error);
 
@@ -218,42 +144,34 @@ export default function EventForm() {
   };
 
   return (
-    <div className="min-h-screen  bg-gradient-to-br from-gray-50 to-gray-100 py-4 sm:py-8 px-3 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-4 sm:py-8 px-3 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center mb-6 sm:mb-8 relative">
-          {/* BASF Logo */}
-          <img
-            src={Logo1}
-            alt="BASF Logo"
-            className="mx-auto mb-3 sm:mb-4 w-32 sm:w-40 h-16 object-contain"
-          />
-
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2 sm:mb-3">
             Family Day Event - 2025
           </h1>
-
           <p className="text-gray-600 text-sm sm:text-lg">Registration Form</p>
 
           {/* Go Home Button */}
           <button
             onClick={() => navigate("/")}
             className="
-    hidden lg:inline-block
-    sm:fixed sm:top-6 sm:right-6
-    sm:bg-gradient-to-br sm:from-blue-600 sm:to-cyan-700
-    sm:hover:from-blue-700 sm:hover:to-cyan-800
-    sm:border sm:border-blue-500 sm:text-white
-    mx-auto sm:mx-0
-    w-full sm:w-auto text-center
-    mt-4 sm:mt-0
-    px-5 py-2.5
-    rounded-lg shadow-lg cursor-pointer
-    transition-all duration-200
-    text-sm font-medium
-    bg-blue-600 sm:bg-gradient-to-br
-    text-white
-  "
+              hidden lg:inline-block
+              sm:fixed sm:top-6 sm:right-6
+              sm:bg-gradient-to-br sm:from-blue-600 sm:to-cyan-700
+              sm:hover:from-blue-700 sm:hover:to-cyan-800
+              sm:border sm:border-blue-500 sm:text-white
+              mx-auto sm:mx-0
+              w-full sm:w-auto text-center
+              mt-4 sm:mt-0
+              px-5 py-2.5
+              rounded-lg shadow-lg cursor-pointer
+              transition-all duration-200
+              text-sm font-medium
+              bg-blue-600 sm:bg-gradient-to-br
+              text-white
+            "
           >
             ← Go Home
           </button>
@@ -291,55 +209,10 @@ export default function EventForm() {
                   <p className="text-xs text-gray-500 mt-1">
                     Must be exactly 8 digits
                   </p>
-
-                  {/* ❌ Staff not found */}
-                  {form.Company_ID.length === 8 && isStaffFound === false && (
-                    <p className="text-sm text-red-600 mt-2 font-semibold">
-                      ❌ Invalid Company ID — Not found in BASF Staff database.
-                    </p>
-                  )}
-
-                  {/* 🔴 Already registered */}
-                  {isRegistered === true && (
-                    <p className="text-sm text-red-600 mt-2 font-semibold">
-                      ⚠️ This Company ID is already registered.
-                    </p>
-                  )}
-
-                  {/* 🟢 Staff exists & not registered */}
-                  {isRegistered === false && form.Name !== "" && (
-                    <p className="text-sm text-green-600 mt-2 font-semibold">
-                      ✅ Not registered yet — you can continue.
-                    </p>
-                  )}
-
-                  {searchResults.length > 0 && (
-                    <ul
-                      className={`mt-2 border rounded-lg bg-white shadow-md max-h-40 overflow-y-auto 
-      ${isRegistered === true ? "opacity-50 pointer-events-none" : ""}`}
-                    >
-                      {searchResults.map((item) => (
-                        <li
-                          key={item.id}
-                          onClick={() => {
-                            if (isRegistered === true) return; // 🔥 Prevent clicking
-                            setForm({
-                              ...form,
-                              Company_ID: item.Company_ID,
-                              Name: item.Name,
-                            });
-                            setSearchResults([]);
-                          }}
-                          className="px-3 py-2 cursor-pointer hover:bg-blue-100 border-b last:border-b-0"
-                        >
-                          <strong>{item.Company_ID}</strong> — {item.Name}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
                 </div>
               </div>
             </div>
+
             {/* Personal Information */}
             <div className="mb-8 sm:mb-10">
               <div className="flex items-center mb-4 sm:mb-6">
@@ -364,13 +237,7 @@ export default function EventForm() {
                       placeholder="Enter your full name"
                       required
                       minLength={3}
-                      disabled
                     />
-                    {form.Name !== "" && (
-                      <p className="text-xs text-green-600 mt-1">
-                        Auto-filled from Company ID
-                      </p>
-                    )}
                   </div>
 
                   {/* Coming for Family Day */}
@@ -393,12 +260,14 @@ export default function EventForm() {
                 </div>
               </div>
             </div>
+
             {/* ⭐ SHOW EVERYTHING BELOW ONLY WHEN YES ⭐ */}
             {form.coming_to_family_day === "Yes" && (
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                  {/* Gender */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-10 sm:mb-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1 sm:mb-2">
                       Gender *
                     </label>
                     <div className="relative">
@@ -454,17 +323,6 @@ export default function EventForm() {
                         type="text"
                         required
                       />
-
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                        <svg
-                          width="16"
-                          height="16"
-                          viewBox="0 0 20 20"
-                          fill="gray"
-                        >
-                          <path d="M5 7l5 5 5-5" />
-                        </svg>
-                      </span>
                     </div>
                   </div>
                 )}
@@ -495,19 +353,6 @@ export default function EventForm() {
                         pattern="[0-9]{10}"
                         maxLength={10}
                       />
-
-                      {isWhatsAppRegistered === true && (
-                        <p className="text-sm text-red-600 mt-2 font-semibold">
-                          ⚠️ This WhatsApp number is already registered.
-                        </p>
-                      )}
-
-                      {isWhatsAppRegistered === false &&
-                        form.WhatsApp_Number.length === 10 && (
-                          <p className="text-sm text-green-600 mt-2 font-semibold">
-                            ✅ WhatsApp number is available.
-                          </p>
-                        )}
                     </div>
 
                     {/* Email */}
@@ -529,7 +374,7 @@ export default function EventForm() {
                   </div>
                 </div>
 
-                {/* Additional Information */}
+                {/* Family Members & Food Preference */}
                 <div className="mb-8 sm:mb-10">
                   <div className="flex items-center mb-4 sm:mb-6">
                     <div className="w-1.5 h-6 sm:h-8 bg-purple-600 rounded-full mr-3 sm:mr-4"></div>
@@ -677,8 +522,8 @@ export default function EventForm() {
                   </div>
                 </div>
               </>
-            )}{" "}
-            {/* END OF YES CONDITION */}
+            )}
+
             {/* Submit Button */}
             <div className="flex justify-center pt-4 sm:pt-6">
               <button
@@ -688,6 +533,7 @@ export default function EventForm() {
                 Submit Registration
               </button>
             </div>
+
             {isLoading && (
               <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
                 <div className="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -708,7 +554,7 @@ export default function EventForm() {
       {showPopup && memberData && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-2 sm:p-4">
           <div className="bg-white rounded-lg sm:rounded-xl shadow-xl w-full max-w-4xl mx-auto overflow-y-auto max-h-[95vh]">
-            {/* Modern Header - Professional Style */}
+            {/* Modern Header */}
             <div className="bg-gradient-to-r from-blue-600 to-cyan-700 p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3 sm:space-x-4">
@@ -736,28 +582,25 @@ export default function EventForm() {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  {/* Close Icon */}
-                  <button
-                    onClick={() => setShowPopup(false)}
-                    className="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-1 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-blue-700"
-                    aria-label="Close popup"
+                <button
+                  onClick={() => setShowPopup(false)}
+                  className="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-1 transition-colors duration-200"
+                  aria-label="Close popup"
+                >
+                  <svg
+                    className="w-5 h-5 sm:w-6 sm:h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
                   >
-                    <svg
-                      className="w-5 h-5 sm:w-6 sm:h-6"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg>
-                  </button>
-                </div>
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
               </div>
             </div>
 
@@ -800,8 +643,10 @@ export default function EventForm() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Share Section */}
                   <div className="bg-white rounded-lg p-4 border border-gray-200">
-                    <h3 className="text-base  text-center font-semibold text-gray-900 mb-3">
+                    <h3 className="text-base text-center font-semibold text-gray-900 mb-3">
                       Share Details
                     </h3>
                     <div className="space-y-3">
@@ -811,8 +656,6 @@ export default function EventForm() {
                           onClick={() => {
                             const detailsLink = `${window.location.origin}/#/member-details/${memberData.Member_ID}`;
                             const qrCleanLink = `${window.location.origin}/#/qr/${memberData.Member_ID}`;
-                            const qrImageDirect = `https://api.regeve.in/uploads/${memberData.Member_ID}/${memberData.Member_ID}_QR.png`;
-
                             const message = `
 🎉 *Registration Confirmed!*
 
@@ -828,10 +671,9 @@ ${detailsLink}
 ${qrCleanLink}
 
 Please present your QR Code at the venue for entry.
-    `;
-
+                            `;
                             const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(
-                              message
+                              message,
                             )}`;
                             window.open(whatsappUrl, "_blank");
                           }}
@@ -846,11 +688,10 @@ Please present your QR Code at the venue for entry.
                             const shareableLink = `${window.location.origin}/#/member-details/${memberData.Member_ID}`;
                             try {
                               await navigator.clipboard.writeText(
-                                shareableLink
+                                shareableLink,
                               );
                               alert("Shareable link copied to clipboard!");
                             } catch (err) {
-                              // Fallback for older browsers
                               const textArea =
                                 document.createElement("textarea");
                               textArea.value = shareableLink;
@@ -861,7 +702,7 @@ Please present your QR Code at the venue for entry.
                               alert("Shareable link copied to clipboard!");
                             }
                           }}
-                          className=" bg-blue-500 cursor-pointer hover:bg-blue-600 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center space-x-2"
+                          className="bg-blue-500 cursor-pointer hover:bg-blue-600 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center space-x-2"
                         >
                           <svg
                             className="w-5 h-5 text-white"
@@ -886,43 +727,40 @@ Please present your QR Code at the venue for entry.
                   </div>
                 </div>
 
-                {/* Right Side - Visual Elements */}
+                {/* Right Side - QR Code */}
                 <div className="lg:col-span-4">
                   <div className="space-y-4">
-                    {/* QR Code Card */}
-                    {memberData.QRCode && (
-                      <div className="bg-white rounded-lg p-4 border border-gray-200">
-                        <h3 className="text-base font-semibold text-gray-900 mb-3">
-                          Event Pass
-                        </h3>
-                        <div className="text-center">
-                          <div className="flex justify-center mb-3">
-                            <img
-                              src={`https://api.regeve.in${memberData.QRCode.url}`}
-                              alt="QR Code"
-                              className="w-32 h-32 sm:w-36 sm:h-36 border border-gray-200 rounded-lg bg-white p-2 mx-auto"
+                    <div className="bg-white rounded-lg p-4 border border-gray-200">
+                      <h3 className="text-base font-semibold text-gray-900 mb-3">
+                        Event Pass
+                      </h3>
+                      <div className="text-center">
+                        <div className="flex justify-center mb-3">
+                          <img
+                            src={`https://api.regeve.in/uploads/${memberData.companyFolder}/${memberData.Member_ID}/qrcode/${memberData.Member_ID}_QR.png`}
+                            alt="QR Code"
+                            className="w-32 h-32 sm:w-36 sm:h-36 border border-gray-200 rounded-lg bg-white p-2 mx-auto"
+                          />
+                        </div>
+                        <p className="text-xs text-gray-600 mb-2">
+                          Present this QR code at the venue
+                        </p>
+                        <div className="flex items-center justify-center space-x-1 text-xs text-gray-500">
+                          <svg
+                            className="w-3 h-3"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z"
+                              clipRule="evenodd"
                             />
-                          </div>
-                          <p className="text-xs text-gray-600 mb-2">
-                            Present this QR code at the venue
-                          </p>
-                          <div className="flex items-center justify-center space-x-1 text-xs text-gray-500">
-                            <svg
-                              className="w-3 h-3"
-                              fill="currentColor"
-                              viewBox="0 0 20 20"
-                            >
-                              <path
-                                fillRule="evenodd"
-                                d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z"
-                                clipRule="evenodd"
-                              />
-                            </svg>
-                            <span>Digital Access Pass</span>
-                          </div>
+                          </svg>
+                          <span>Digital Access Pass</span>
                         </div>
                       </div>
-                    )}
+                    </div>
                   </div>
                 </div>
               </div>

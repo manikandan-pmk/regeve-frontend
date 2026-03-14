@@ -6,8 +6,8 @@ import Home from "./pages/Home";
 import Footer from "./components/Footer";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
-import Dashboard from "./pages/Dashboard";
-import EventForm from "./components/EventForm";
+import Dashboard from "./pages/Event/Dashboard";
+import EventForm from "./pages/Event/EventForm";
 import LuckyDraw from "../src/pages/LuckyDraw/LuckyDraw";
 import EventRegistration from "./components/services/EventRegistration";
 import LuckydrawServices from "./components/services/LuckydrawServices";
@@ -50,6 +50,7 @@ import BiddingForm from "./pages/Bidding/BiddingForm";
 import Participants from "./pages/Bidding/ParticipantsDashboard";
 import AdminBiddingDashboard from "./pages/Bidding/AdminBiddingDashboard";
 import ParticipantBiddingPage from "./pages/Bidding/ParticipantBiddingPage";
+import EventManagementHomePage from "./pages/Event/EventManagementHomePage";
 
 export default function App() {
   const location = useLocation();
@@ -61,7 +62,6 @@ export default function App() {
     location.pathname === "/eventform-qr" ||
     location.pathname === "/scanDashboard" ||
     location.pathname === "/regeve-admin" ||
-    location.pathname === "/dashboard" ||
     location.pathname === "/participationDashboard" ||
     location.pathname.includes("/luckydraw-dashboard") ||
     location.pathname.includes("/luckydraw-form") ||
@@ -85,7 +85,11 @@ export default function App() {
     location.pathname.includes("/bid-partcipant-form/") ||
     location.pathname.includes("/admin-bidding-dashboard/") ||
     location.pathname.includes("/bidding-participants/") ||
-    location.pathname.includes("/participant-bidding");
+    location.pathname.includes("/participant-bidding") ||
+    //event-management
+    location.pathname.includes("/event-home") ||
+    location.pathname.includes("/dashboard/")||
+    location.pathname.includes("/event-form/");
 
   return (
     <div className="max-w-full overflow-x-hidden">
@@ -103,7 +107,7 @@ export default function App() {
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/eventgallery" element={<EventGallery />} />
         {/* ================= SERVICES ================= */}
-        <Route path="/:adminId/dashboard" element={<Dashboard />} />
+
         <Route path="/event-form" element={<EventForm />} />
         <Route
           path="/:adminId/luckydraw/:luckydrawDocumentId"
@@ -209,6 +213,17 @@ export default function App() {
         <Route
           path="/:adminId/admin-bidding-dashboard/:documentId"
           element={<AdminBiddingDashboard />}
+        />
+        {/* ================= EVENT MANAGEMENT ================= */}
+
+        <Route
+          path="/:adminId/event-home"
+          element={<EventManagementHomePage />}
+        />
+        <Route path="/:adminId/dashboard/:documentId" element={<Dashboard />} />
+        <Route
+          path="/:adminId/event-form/:documentId"
+          element={<EventForm />}
         />
       </Routes>
 

@@ -359,7 +359,7 @@ export default function AdminDashboard() {
       title: "Event Analytics",
       description: "Real-time event metrics and performance dashboards",
       color: "bg-gradient-to-r from-amber-500 to-orange-600",
-      route: "/dashboard",
+      route: "/event-home",
       isNew: true,
     },
   };

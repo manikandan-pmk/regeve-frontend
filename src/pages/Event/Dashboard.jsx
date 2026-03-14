@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import { useParams } from "react-router-dom";
 import {
   FaUsers,
   FaUtensils,
@@ -346,7 +347,7 @@ const EditPopup = ({ user, onClose, onSaved }) => {
     if (totalPeople !== totalFood) {
       setSaving(false);
       setError(
-        `People count (${totalPeople}) must equal Food count (${totalFood}).`
+        `People count (${totalPeople}) must equal Food count (${totalFood}).`,
       );
       return;
     }
@@ -375,7 +376,7 @@ const EditPopup = ({ user, onClose, onSaved }) => {
         const uploadRes = await axios.post(
           "https://api.regeve.in/api/upload",
           fd,
-          { headers: { "Content-Type": "multipart/form-data" } }
+          { headers: { "Content-Type": "multipart/form-data" } },
         );
 
         if (Array.isArray(uploadRes.data) && uploadRes.data.length > 0) {
@@ -408,9 +409,17 @@ const EditPopup = ({ user, onClose, onSaved }) => {
 
       if (uploadedPhoto) payload.Photo = uploadedPhoto.id;
 
-      await axios.put(`https://api.regeve.in/api/event-forms/${user.userId}`, {
-        data: payload,
-      });
+      await axios.put(
+        `https://api.regeve.in/api/event-management-form/${user.documentId}`,
+        {
+          data: payload,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+          },
+        },
+      );
 
       setSaving(false);
       onSaved({
@@ -455,7 +464,7 @@ const EditPopup = ({ user, onClose, onSaved }) => {
       console.error("Update error:", err);
       setSaving(false);
       setError(
-        "Failed to update participant. Please check all required fields and try again."
+        "Failed to update participant. Please check all required fields and try again.",
       );
     }
   };
@@ -765,12 +774,14 @@ const Dashboard = () => {
   const [users, setUsers] = useState([]);
   const [dashboardData, setDashboardData] = useState({
     totalRegisteredUsers: 0,
-    totalMembers: 0,
-    totalNonVeg: 0,
+    totalAdminverfied: 0,
+    totalAttendees: 0,
+    totalAdults: 0,
+    totalChildren: 0,
+    totalSelf: 0,
     totalVeg: 0,
+    totalNonVeg: 0,
     totalGifts: 0,
-    totalForms: 0, // ➕ added
-    totalPresent: 0,
     verifiedNotPresentVeg: 0,
     verifiedNotPresentNonVeg: 0,
   });
@@ -780,6 +791,7 @@ const Dashboard = () => {
 
   const [viewUser, setViewUser] = useState(null);
   const [editUser, setEditUser] = useState(null);
+  const { documentId } = useParams();
 
   const usersPerPage = 10;
 
@@ -811,14 +823,21 @@ const Dashboard = () => {
   // ----------------------------- FETCH API -----------------------------
   const fetchData = async () => {
     try {
+      const token = localStorage.getItem("jwt");
       const response = await axios.get(
-        "https://api.regeve.in/api/event-forms?populate=*&fields=*"
+        `https://api.regeve.in/api/event-management-name/${documentId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
       );
-      const data = response.data?.data || [];
+      const data = response.data?.data?.event_management_forms || [];
 
       const formatted = data.map((item) => ({
         id: item.id,
         name: item.Name,
+        documentId: item.documentId,
         userId: item.Member_ID,
         userImage: item.Photo?.url
           ? `https://api.regeve.in${item.Photo.url}`
@@ -837,8 +856,8 @@ const Dashboard = () => {
         vegcount: Number(item.Veg_Count) || 0,
         nonvegcount: Number(item.Non_Veg_Count) || 0,
         isPresent: item.IsPresent === true,
-        isWinned: item.IsWinnned === true,
-        IsVerified_Member: item.IsVerified_Member === true,
+        isWinned: item.IsWinned === true,
+        IsVerified_Member: item.Is_Verified_Member === true,
         comingStatus: item.coming_to_family_day || null,
         isGiftReceived:
           item.IsGiftReceived === true ||
@@ -860,7 +879,7 @@ const Dashboard = () => {
 
       // ONLY VERIFIED USERS ARE COUNTED AS REGISTERED
       const totalAdminverfied = formatted.filter(
-        (u) => u.IsVerified_Member === true
+        (u) => u.IsVerified_Member === true,
       ).length;
 
       // -----------------------------
@@ -870,25 +889,27 @@ const Dashboard = () => {
 
       // VERIFIED BUT NOT PRESENT (THIS WAS MISSING)
       const verifiedNotPresent = formatted.filter(
-        (u) => u.IsVerified_Member === true && u.isPresent === false
+        (u) => u.IsVerified_Member === true && u.isPresent === false,
       );
 
       // FOOD COUNTS FOR VERIFIED NOT PRESENT
       const verifiedNotPresentVeg = verifiedNotPresent.reduce(
         (sum, u) => sum + u.vegcount,
-        0
+        0,
       );
 
       const verifiedNotPresentNonVeg = verifiedNotPresent.reduce(
         (sum, u) => sum + u.nonvegcount,
-        0
+        0,
       );
+
+      const totalSelf = presentUsers.reduce((sum, u) => sum + (u.self || 0), 0);
 
       // -----------------------------
       // GIFTS
       // -----------------------------
       const totalGifts = presentUsers.filter(
-        (u) => u.isGiftReceived === true
+        (u) => u.isGiftReceived === true,
       ).length;
 
       // -----------------------------
@@ -901,25 +922,25 @@ const Dashboard = () => {
       // -----------------------------
       const totalAdults = presentUsers.reduce(
         (sum, u) => sum + u.adultcount,
-        0
+        0,
       );
       const totalChildren = presentUsers.reduce(
         (sum, u) => sum + u.childrencount,
-        0
+        0,
       );
       const totalVeg = presentUsers.reduce((sum, u) => sum + u.vegcount, 0);
       const totalNonVeg = presentUsers.reduce(
         (sum, u) => sum + u.nonvegcount,
-        0
+        0,
       );
 
-      // UPDATE DASHBOARD
       setDashboardData({
         totalRegisteredUsers,
         totalAdminverfied,
         totalAttendees,
         totalAdults,
         totalChildren,
+        totalSelf,
         totalVeg,
         totalNonVeg,
         totalGifts,
@@ -931,37 +952,40 @@ const Dashboard = () => {
     }
   };
 
-  const handleVerificationToggle = async (memberId, newStatus) => {
+  const handleVerificationToggle = async (documentId, newStatus) => {
     try {
       // update UI instantly
       setUsers((prev) =>
         prev.map((u) =>
-          u.userId === memberId ? { ...u, IsVerified_Member: newStatus } : u
-        )
+          u.documentId === documentId ? { ...u, IsVerified_Member: newStatus } : u,
+        ),
       );
 
       // send correct body structure expected by backend
       await axios.put(
-        `https://api.regeve.in/api/event-forms/${memberId}`,
+        `https://api.regeve.in/api/event-management-form/${documentId}`,
         {
           data: {
-            IsVerified_Member: newStatus,
+            Is_Verified_Member: newStatus,
           },
         },
         {
-          headers: { "Content-Type": "application/json" },
-        }
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+            "Content-Type": "application/json",
+          },
+        },
       );
 
-      console.log("Updated verified:", memberId);
+      console.log("Updated verified:", documentId);
     } catch (error) {
       console.error("Verification failed:", error);
 
       // rollback
       setUsers((prev) =>
         prev.map((u) =>
-          u.userId === memberId ? { ...u, IsVerified_Member: !newStatus } : u
-        )
+          u.documentId === documentId ? { ...u, IsVerified_Member: !newStatus } : u,
+        ),
       );
     }
   };
@@ -971,16 +995,19 @@ const Dashboard = () => {
       // Update UI instantly
       setUsers((prev) =>
         prev.map((u) =>
-          u.userId === memberId ? { ...u, comingStatus: newStatus } : u
-        )
+          u.userId === memberId ? { ...u, comingStatus: newStatus } : u,
+        ),
       );
 
       // Update Strapi
-      await axios.put(`https://api.regeve.in/api/event-forms/${memberId}`, {
-        data: {
-          coming_to_family_day: newStatus,
+      await axios.put(
+        `https://api.regeve.in/api/event-management-form/${memberId}`,
+        {
+          data: {
+            coming_to_family_day: newStatus,
+          },
         },
-      });
+      );
 
       console.log("Join status updated for:", memberId);
     } catch (err) {
@@ -991,19 +1018,25 @@ const Dashboard = () => {
         prev.map((u) =>
           u.userId === memberId
             ? { ...u, comingStatus: newStatus === "Yes" ? "No" : "Yes" }
-            : u
-        )
+            : u,
+        ),
       );
     }
   };
 
   const refreshStatsOnly = async () => {
     try {
+      const token = localStorage.getItem("jwt");
       const response = await axios.get(
-        "https://api.regeve.in/api/event-forms?populate=*&fields=*"
+        `https://api.regeve.in/api/event-management-name/${documentId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
       );
 
-      const data = response.data?.data || [];
+      const data = response.data?.data?.event_management_forms || [];
       const formatted = data.map((item) => ({
         adultcount: Number(item.Adult_Count) || 0,
         childrencount: Number(item.Children_Count) || 0,
@@ -1014,51 +1047,51 @@ const Dashboard = () => {
           item.IsGiftReceived === true ||
           item.IsGiftReceived === 1 ||
           item.IsGiftReceived === "true",
-        IsVerified_Member: item.IsVerified_Member === true,
+        IsVerified_Member: item.Is_Verified_Member === true,
         self: Number(item.Self) || 1,
       }));
 
       const totalAdminverfied = formatted.filter(
-        (u) => u.IsVerified_Member === true
+        (u) => u.IsVerified_Member === true,
       ).length;
 
       const presentUsers = formatted.filter((u) => u.isPresent);
       const totalSelf = presentUsers.reduce((sum, u) => sum + (u.self || 0), 0);
 
       const verifiedNotPresent = formatted.filter(
-        (u) => u.IsVerified_Member === true
+        (u) => u.IsVerified_Member === true,
       );
 
       const verifiedNotPresentVeg = verifiedNotPresent.reduce(
         (sum, u) => sum + u.vegcount,
-        0
+        0,
       );
 
       const verifiedNotPresentNonVeg = verifiedNotPresent.reduce(
         (sum, u) => sum + u.nonvegcount,
-        0
+        0,
       );
 
       const totalGifts = presentUsers.filter(
-        (u) => u.isGiftReceived === true
+        (u) => u.isGiftReceived === true,
       ).length;
 
       const totalAttendees = presentUsers.length;
 
       const totalAdults = presentUsers.reduce(
         (sum, u) => sum + u.adultcount,
-        0
+        0,
       );
 
       const totalChildren = presentUsers.reduce(
         (sum, u) => sum + u.childrencount,
-        0
+        0,
       );
 
       const totalVeg = presentUsers.reduce((sum, u) => sum + u.vegcount, 0);
       const totalNonVeg = presentUsers.reduce(
         (sum, u) => sum + u.nonvegcount,
-        0
+        0,
       );
 
       setDashboardData((prev) => ({
@@ -1094,7 +1127,7 @@ const Dashboard = () => {
     (u) =>
       u.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       u.userId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.companyId?.toLowerCase().includes(searchTerm.toLowerCase())
+      u.companyId?.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   const indexOfLast = currentPage * usersPerPage;
@@ -1118,7 +1151,7 @@ const Dashboard = () => {
     setEditUser(null);
 
     setUsers((prev) =>
-      prev.map((u) => (u.userId === updated.userId ? updated : u))
+      prev.map((u) => (u.documentId  === updated.documentId  ? updated : u)),
     );
     setTimeout(() => {
       fetchData(); // <-- THIS FIXES THE DASHBOARD STATS
@@ -1589,7 +1622,7 @@ const Dashboard = () => {
                               "https://api.regeve.in/api/event-forms/export-notjoining";
                             link.setAttribute(
                               "download",
-                              "notjoining-users.xlsx"
+                              "notjoining-users.xlsx",
                             );
                             document.body.appendChild(link);
                             link.click();
@@ -1667,8 +1700,8 @@ const Dashboard = () => {
                                 checked={user.IsVerified_Member || false}
                                 onChange={(e) =>
                                   handleVerificationToggle(
-                                    user.userId,
-                                    e.target.checked
+                                    user.documentId,
+                                    e.target.checked,
                                   )
                                 }
                                 className="hidden"
@@ -1820,8 +1853,8 @@ const Dashboard = () => {
                   currentPage <= 3
                     ? i + 1
                     : currentPage >= totalPages - 2
-                    ? totalPages - 4 + i
-                    : currentPage - 2 + i;
+                      ? totalPages - 4 + i
+                      : currentPage - 2 + i;
                 return (
                   <button
                     key={page}
