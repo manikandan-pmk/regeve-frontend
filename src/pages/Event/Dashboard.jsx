@@ -12,6 +12,8 @@ import {
   FaTimes,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 
 /* -----------------------------------------------------
    VIEW POPUP COMPONENT (MERGED)
@@ -791,7 +793,9 @@ const Dashboard = () => {
 
   const [viewUser, setViewUser] = useState(null);
   const [editUser, setEditUser] = useState(null);
-  const { documentId } = useParams();
+  const { adminId, documentId } = useParams();
+
+  const [showCopyToast, setShowCopyToast] = useState(false);
 
   const usersPerPage = 10;
 
@@ -819,6 +823,26 @@ const Dashboard = () => {
       navigate("/");
     }
   }, [navigate]);
+
+  const copyParticipantLink = () => {
+    const url = `${window.location.origin}/#/${adminId}/event-form/${documentId}`;
+    navigator.clipboard.writeText(url);
+
+    // Trigger animation
+    setShowCopyToast(true);
+
+    // Auto-hide after 3 seconds
+    setTimeout(() => setShowCopyToast(false), 3000);
+  };
+
+  const copyLuckyDrawLink = () => {
+    const url = `${window.location.origin}/#/${adminId}/event-luckydraw/${documentId}`;
+    navigator.clipboard.writeText(url);
+
+    setShowCopyToast(true);
+
+    setTimeout(() => setShowCopyToast(false), 3000);
+  };
 
   // ----------------------------- FETCH API -----------------------------
   const fetchData = async () => {
@@ -957,7 +981,9 @@ const Dashboard = () => {
       // update UI instantly
       setUsers((prev) =>
         prev.map((u) =>
-          u.documentId === documentId ? { ...u, IsVerified_Member: newStatus } : u,
+          u.documentId === documentId
+            ? { ...u, IsVerified_Member: newStatus }
+            : u,
         ),
       );
 
@@ -984,7 +1010,9 @@ const Dashboard = () => {
       // rollback
       setUsers((prev) =>
         prev.map((u) =>
-          u.documentId === documentId ? { ...u, IsVerified_Member: !newStatus } : u,
+          u.documentId === documentId
+            ? { ...u, IsVerified_Member: !newStatus }
+            : u,
         ),
       );
     }
@@ -1151,7 +1179,7 @@ const Dashboard = () => {
     setEditUser(null);
 
     setUsers((prev) =>
-      prev.map((u) => (u.documentId  === updated.documentId  ? updated : u)),
+      prev.map((u) => (u.documentId === updated.documentId ? updated : u)),
     );
     setTimeout(() => {
       fetchData(); // <-- THIS FIXES THE DASHBOARD STATS
@@ -1166,9 +1194,95 @@ const Dashboard = () => {
     setEditUser(null);
   };
 
-  // ----------------------------- UI BELOW (UNCHANGED except actions) -----------------------------
+  // ----------------------------- EXPORT HANDLERS (FRONTEND) -----------------------------
+  const exportToExcel = (data, filename, sheetName = "Sheet1") => {
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    const blob = new Blob([excelBuffer], { type: "application/octet-stream" });
+    saveAs(blob, filename);
+  };
+
+  const handleExportVerified = () => {
+    const verifiedUsers = users.filter((u) => u.IsVerified_Member);
+    const exportData = verifiedUsers.map((u) => ({
+      "Name": u.name,
+      "Member ID": u.userId,
+      "Company ID": u.companyId,
+      "Gender": u.gender,
+      "Email": u.email,
+      "WhatsApp": u.whatsapp,
+      "Travel Mode": u.travelmode,
+      "Pickup Location": u.pickuplocation,
+      "Self": u.self,
+      "Adults": u.adultcount,
+      "Children": u.childrencount,
+      "Veg": u.vegcount,
+      "Non-Veg": u.nonvegcount,
+      "Verified": u.IsVerified_Member ? "Yes" : "No",
+      "Present": u.isPresent ? "Yes" : "No",
+      "Gift Received": u.isGiftReceived ? "Yes" : "No",
+      "Coming Status": u.comingStatus || "N/A",
+      "Registration Date": new Date(u.registrationDate).toLocaleString(),
+    }));
+    exportToExcel(exportData, "verified-users.xlsx", "Verified Users");
+  };
+
+  const handleExportPresent = () => {
+    const presentUsers = users.filter((u) => u.isPresent);
+    const exportData = presentUsers.map((u) => ({
+      "Name": u.name,
+      "Member ID": u.userId,
+      "Company ID": u.companyId,
+      "Gender": u.gender,
+      "Email": u.email,
+      "WhatsApp": u.whatsapp,
+      "Travel Mode": u.travelmode,
+      "Pickup Location": u.pickuplocation,
+      "Self": u.self,
+      "Adults": u.adultcount,
+      "Children": u.childrencount,
+      "Veg": u.vegcount,
+      "Non-Veg": u.nonvegcount,
+      "Verified": u.IsVerified_Member ? "Yes" : "No",
+      "Present": u.isPresent ? "Yes" : "No",
+      "Gift Received": u.isGiftReceived ? "Yes" : "No",
+      "Coming Status": u.comingStatus || "N/A",
+      "Registration Date": new Date(u.registrationDate).toLocaleString(),
+      "Winned Lucky Draw": u.isWinned ? "Yes" : "No",
+    }));
+    exportToExcel(exportData, "present-users.xlsx", "Present Users");
+  };
+
+  const handleExportNotJoining = () => {
+    const notJoiningUsers = users.filter((u) => u.comingStatus === "No");
+    const exportData = notJoiningUsers.map((u) => ({
+      "Name": u.name,
+      "Member ID": u.userId,
+      "Company ID": u.companyId,
+      "Gender": u.gender,
+      "Email": u.email,
+      "WhatsApp": u.whatsapp,
+      "Travel Mode": u.travelmode,
+      "Pickup Location": u.pickuplocation,
+      "Self": u.self,
+      "Adults": u.adultcount,
+      "Children": u.childrencount,
+      "Veg": u.vegcount,
+      "Non-Veg": u.nonvegcount,
+      "Verified": u.IsVerified_Member ? "Yes" : "No",
+      "Present": u.isPresent ? "Yes" : "No",
+      "Gift Received": u.isGiftReceived ? "Yes" : "No",
+      "Coming Status": u.comingStatus || "N/A",
+      "Registration Date": new Date(u.registrationDate).toLocaleString(),
+    }));
+    exportToExcel(exportData, "notjoining-users.xlsx", "Not Joining");
+  };
+
+  // ----------------------------- UI BELOW -----------------------------
   return (
-    <div className="min-h-screen bg-gradient-to-br  from-gray-50 to-blue-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-6">
       {/* View & Edit Popups */}
       {viewUser && (
         <ViewPopup user={viewUser} onClose={() => setViewUser(null)} />
@@ -1181,9 +1295,10 @@ const Dashboard = () => {
         />
       )}
 
-      {/* ---------------- HEADER SECTION (UNCHANGED) ---------------- */}
+      {/* ---------------- HEADER SECTION ---------------- */}
       <div className="mb-8">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          {/* Header Text */}
           <div>
             <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
               Event Dashboard
@@ -1192,142 +1307,173 @@ const Dashboard = () => {
               Real-time overview of event metrics
             </p>
           </div>
-          <div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-10">
+            {/* Participant Form Button */}
             <button
-              onClick={() => navigate("/")}
-              className="fixed top-6 right-6 z-50 bg-gradient-to-br from-blue-600 to-cyan-700 hover:from-blue-700 hover:to-cyan-800 text-white px-5 py-2.5 rounded-lg shadow-lg cursor-pointer transition-all duration-200 ease-in-out transform hover:scale-105 font-medium text-sm border border-blue-500"
+              onClick={copyParticipantLink}
+              className="bg-white cursor-pointer text-blue-600 hover:bg-blue-50 px-4 py-2.5 rounded-lg shadow-sm transition-all duration-200 border border-blue-200 font-medium text-sm"
             >
-              ← Go Home
+              Participant Form Copy Link
             </button>
+
+            {/* Lucky Draw Button */}
+            <button
+              onClick={copyLuckyDrawLink}
+              className="bg-white cursor-pointer text-cyan-600 hover:bg-cyan-50 px-4 py-2.5 rounded-lg shadow-sm transition-all duration-200 border border-cyan-200 font-medium text-sm"
+            >
+              Lucky Draw
+            </button>
+
+            {/* Go Home Button */}
+            <button
+              onClick={() => navigate(`/${adminId}/event-home`)}
+              className="bg-gradient-to-br from-blue-600 to-cyan-700 hover:from-blue-700 hover:to-cyan-800 text-white px-5 py-2.5 rounded-lg shadow-lg cursor-pointer transition-all duration-200 ease-in-out transform hover:scale-105 font-medium text-sm border border-blue-500"
+            >
+              ← Go Back
+            </button>
+          </div>
+
+          {/* --- COPY TOAST NOTIFICATION --- */}
+          <div
+            className={`fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] transition-all duration-500 transform 
+    ${showCopyToast ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10 pointer-events-none"}`}
+          >
+            <div className="bg-gray-900 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-gray-700">
+              <div className="bg-green-500 p-1 rounded-full">
+                <svg
+                  className="w-4 h-4 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="3"
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+              </div>
+              <span className="font-medium">Link copied to clipboard!</span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* ---------------- STATS CARDS (LIVE DATA INSERTED) ---------------- */}
-      <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-5 mb-8 overflow-visible">
-        {/* TOTAL REGISTERED USERS */}
-        <div
-          className="bg-gradient-to-br from-white to-blue-50 rounded-3xl p-6 shadow-2xl 
-                  border border-blue-100 transform transform-gpu hover:scale-105 
-                  transition-all duration-300 flex flex-col justify-between"
-        >
-          <div className="flex items-start space-x-4">
-            <div className="p-4 bg-blue-500/20 rounded-2xl shadow-inner">
-              <FaUsers className="text-blue-600 text-xl" />
+      {/* ---------------- STATS CARDS ---------------- */}
+      <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-6 mb-8 overflow-visible">
+        {/* 1. TOTAL REGISTERED USERS */}
+        <div className="bg-white cursor-pointer rounded-2xl p-6 shadow-md border border-gray-200 border-t-4 border-t-blue-500 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group">
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-blue-100 text-blue-700 rounded-lg group-hover:scale-110 transition-transform duration-300">
+                <FaUsers className="text-2xl" />
+              </div>
             </div>
-
             <div>
-              <p className="text-blue-600 font-semibold text-base">
-                Admin Verified Users
-              </p>
-              <h3 className="text-3xl font-bold text-gray-800 mt-1">
+              <h3 className="text-4xl font-extrabold text-gray-900 tracking-tight">
                 {dashboardData.totalAdminverfied}
               </h3>
+              <p className="text-gray-700 font-bold text-base mt-2">
+                Admin Verified Users
+              </p>
             </div>
           </div>
 
           <div className="mt-6">
             <button
-              onClick={() => {
-                const link = document.createElement("a");
-                link.href =
-                  "https://api.regeve.in/api/event-forms/export-verified";
-                link.setAttribute("download", "verified-users.xlsx");
-                document.body.appendChild(link);
-                link.click();
-                link.remove();
-              }}
-              className="px-2 py-1 ml-12 bg-gray-600 text-white rounded-xl shadow-lg text-sm font-semibold"
+              onClick={handleExportVerified}
+              className="w-full cursor-pointer flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 hover:shadow-lg transition-all text-sm font-bold uppercase tracking-wider"
             >
-              📄 Export
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2.5"
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                />
+              </svg>
+              Export List
             </button>
           </div>
         </div>
 
-        {/* VERIFIED NOT PRESENT - FOOD COUNT */}
-        <div
-          className="bg-gradient-to-br from-white to-orange-50 rounded-3xl p-6 shadow-2xl 
-                  border border-orange-200 transform transform-gpu hover:scale-105 
-                  transition-all duration-300"
-        >
-          <div className="flex items-center space-x-4 mb-4">
-            <div className="p-4 bg-orange-500/20 rounded-2xl shadow-inner">
-              <FaUtensils className="text-orange-600 text-xl" />
+        {/* 2. VERIFIED NOT PRESENT - FOOD COUNT */}
+        <div className="bg-white cursor-pointer rounded-2xl p-6 shadow-md border border-gray-200 border-t-4 border-t-orange-500 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group">
+          <div>
+            <div className="flex items-start justify-between mb-4">
+              <div className="p-3 bg-orange-100 text-orange-700 rounded-lg group-hover:scale-110 transition-transform duration-300">
+                <FaUtensils className="text-2xl" />
+              </div>
+              <span className="flex items-center text-xs font-bold text-orange-700 bg-orange-100 px-3 py-1.5 rounded-full border border-orange-200 shadow-sm">
+                <span className="w-2 h-2 bg-orange-600 rounded-full mr-2 animate-pulse"></span>
+                Not Present
+              </span>
             </div>
-
             <div>
-              <p className="text-orange-600 font-semibold text-base">
-                Food Count (Admin Verified, Not Present)
-              </p>
-
-              <h3 className="text-xl font-bold text-gray-800 mt-1 animate-pulse">
+              <h3 className="text-4xl font-extrabold text-gray-900 tracking-tight">
                 {dashboardData.verifiedNotPresentVeg +
-                  dashboardData.verifiedNotPresentNonVeg}{" "}
-                Head
+                  dashboardData.verifiedNotPresentNonVeg}
               </h3>
+              <p className="text-gray-700 font-bold text-base mt-2">
+                Food Count Est.
+              </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-6 mt-6">
-            <div className="bg-white/80 rounded-2xl p-4 shadow-lg border border-green-200 text-center">
-              <span className="text-2xl">🥗</span>
-              <p className="text-xl font-bold text-green-700 mt-2">
+          <div className="grid grid-cols-2 gap-4 mt-6">
+            <div className="bg-green-50 rounded-xl p-3 border border-green-200 flex flex-col items-center justify-center shadow-sm">
+              <span className="text-2xl mb-1 drop-shadow-sm">🥗</span>
+              <p className="text-xl font-black text-green-800">
                 {dashboardData.verifiedNotPresentVeg}
               </p>
-              <p className="text-xs text-green-700 font-medium">Veg</p>
+              <p className="text-xs text-green-700 font-extrabold uppercase mt-1">
+                Veg
+              </p>
             </div>
-
-            <div className="bg-white/80 rounded-2xl p-4 shadow-lg border border-red-200 text-center">
-              <span className="text-2xl">🍗</span>
-              <p className="text-xl font-bold text-red-700 mt-2">
+            <div className="bg-red-50 rounded-xl p-3 border border-red-200 flex flex-col items-center justify-center shadow-sm">
+              <span className="text-2xl mb-1 drop-shadow-sm">🍗</span>
+              <p className="text-xl font-black text-red-800">
                 {dashboardData.verifiedNotPresentNonVeg}
               </p>
-              <p className="text-xs text-red-700 font-medium">Non-Veg</p>
+              <p className="text-xs text-red-700 font-extrabold uppercase mt-1">
+                Non-Veg
+              </p>
             </div>
           </div>
         </div>
 
-        {/* TOTAL ATTENDEES WITH CIRCLE PROGRESS */}
-        <div
-          className="bg-gradient-to-br from-white to-blue-50 rounded-3xl p-6 shadow-2xl 
-                  border border-blue-100 transform transform-gpu hover:scale-105 
-                  transition-all duration-300 flex flex-col justify-between"
-        >
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="flex items-center space-x-4">
-                <div className="p-4 bg-blue-500/20 rounded-2xl shadow-inner">
-                  <FaUsers className="text-blue-600 text-xl" />
-                </div>
-
-                <div>
-                  <p className="text-blue-600 font-semibold text-base">
-                    Total Attendees
-                  </p>
-                  <h3 className="text-3xl font-bold text-gray-800 mt-1">
-                    {dashboardData.totalAttendees}
-                  </h3>
-                </div>
-              </div>
+        {/* 3. TOTAL ATTENDEES WITH CIRCLE PROGRESS */}
+        <div className="bg-white cursor-pointer rounded-2xl p-6 shadow-md border border-gray-200 border-t-4 border-t-indigo-500 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group">
+          <div className="flex items-start justify-between mb-4">
+            <div className="p-3 bg-indigo-100 text-indigo-700 rounded-lg group-hover:scale-110 transition-transform duration-300">
+              <FaUsers className="text-2xl" />
             </div>
 
-            {/* FIXED CIRCLE PROGRESS INSIDE CARD */}
-            <div className="relative flex items-center justify-center w-20 h-20 shrink-0">
+            <div className="relative flex items-center justify-center w-16 h-16 shrink-0 bg-gray-50 rounded-full shadow-inner">
               <svg
-                className="w-16 h-16 transform -rotate-90"
+                className="w-14 h-14 transform -rotate-90"
                 viewBox="0 0 36 36"
               >
                 <path
                   d="M18 2.0845 a15.9155 15.9155 0 0 1 0 31.831 a15.9155 15.9155 0 0 1 0 -31.831"
                   fill="none"
-                  stroke="#E5E7EB"
-                  strokeWidth="3"
+                  stroke="#E2E8F0"
+                  strokeWidth="4"
                 />
                 <path
                   d="M18 2.0845 a15.9155 15.9155 0 0 1 0 31.831 a15.9155 15.9155 0 0 1 0 -31.831"
                   fill="none"
-                  stroke="url(#blueGradient)"
-                  strokeWidth="3"
+                  stroke="#4F46E5"
+                  strokeWidth="4"
+                  strokeLinecap="round"
                   strokeDasharray={`${
                     dashboardData.totalAdminverfied === 0
                       ? 0
@@ -1337,22 +1483,8 @@ const Dashboard = () => {
                   }, 100`}
                   className="transition-all duration-1000 ease-out"
                 />
-
-                <defs>
-                  <linearGradient
-                    id="blueGradient"
-                    x1="0%"
-                    y1="0%"
-                    x2="100%"
-                    y2="0%"
-                  >
-                    <stop offset="0%" stopColor="#3B82F6" />
-                    <stop offset="100%" stopColor="#1D4ED8" />
-                  </linearGradient>
-                </defs>
               </svg>
-
-              <div className="absolute text-xs font-bold text-blue-700">
+              <div className="absolute text-xs font-black text-indigo-800">
                 {dashboardData.totalAdminverfied === 0
                   ? 0
                   : (
@@ -1365,178 +1497,94 @@ const Dashboard = () => {
             </div>
           </div>
 
-          <p className="text-xs text-gray-600 text-center mt-4">
-            Capacity • {dashboardData.totalAttendees}/
-            {dashboardData.totalAdminverfied}
-          </p>
+          <div>
+            <h3 className="text-4xl font-extrabold text-gray-900 tracking-tight">
+              {dashboardData.totalAttendees}
+            </h3>
+            <p className="text-gray-700 font-bold text-base mt-2">
+              Total Attendees
+            </p>
+            <p className="text-sm text-gray-500 font-semibold mt-1">
+              Capacity: {dashboardData.totalAttendees} /{" "}
+              {dashboardData.totalAdminverfied}
+            </p>
+          </div>
 
           <div className="mt-6">
             <button
-              onClick={() => {
-                const link = document.createElement("a");
-                link.href =
-                  "https://api.regeve.in/api/event-forms/export-present";
-                link.setAttribute("download", "present-users.xlsx");
-                document.body.appendChild(link);
-                link.click();
-                link.remove();
-              }}
-              className="px-2 py-1 ml-12 bg-gray-600 text-white rounded-xl shadow-lg text-sm font-semibold"
+              onClick={handleExportPresent}
+              className="w-full cursor-pointer flex items-center justify-center gap-2 px-4 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 hover:shadow-lg transition-all text-sm font-bold uppercase tracking-wider"
             >
-              📄 Export
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2.5"
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                />
+              </svg>
+              Export Present
             </button>
           </div>
         </div>
 
-        <div className="bg-gradient-to-br transform-gpu from-white to-green-50 rounded-3xl p-6 shadow-2xl border border-green-100 transform hover:scale-105 transition-all duration-300">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <div className="flex items-center space-x-4 mb-6">
-                <div className="p-4 bg-green-500/20 rounded-2xl shadow-inner">
-                  <FaUtensils className="text-green-600 text-xl" />
-                </div>
-
-                <div>
-                  <p className="text-green-600 font-semibold text-base">
-                    Food Distribution
-                  </p>
-
-                  <h3 className="text-2xl font-bold text-gray-800 mt-1 animate-pulse">
-                    {dashboardData.totalAdults +
-                      dashboardData.totalChildren +
-                      dashboardData.totalSelf}{" "}
-                    Head
-                  </h3>
-                </div>
+        {/* 4. FOOD DISTRIBUTION */}
+        <div className="bg-white cursor-pointer rounded-2xl p-6 shadow-md border border-gray-200 border-t-4 border-t-emerald-500 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group">
+          <div>
+            <div className="flex items-start justify-between mb-4">
+              <div className="p-3 bg-emerald-100 text-emerald-700 rounded-lg group-hover:scale-110 transition-transform duration-300">
+                <FaUtensils className="text-2xl" />
               </div>
+            </div>
+            <div>
+              <h3 className="text-4xl font-extrabold text-gray-900 tracking-tight">
+                {dashboardData.totalAdults +
+                  dashboardData.totalChildren +
+                  dashboardData.totalSelf}
+              </h3>
+              <p className="text-gray-700 font-bold text-base mt-2">
+                Food Distributed
+              </p>
+            </div>
+          </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                {/* Veg */}
-                <div className="bg-white/80 rounded-2xl p-4 shadow-lg border border-green-200 transform hover:scale-105 transition-all duration-200">
-                  <div className="text-center">
-                    <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                      <span className="text-lg font-bold text-green-600">
-                        🥗
-                      </span>
-                    </div>
+          <div className="flex gap-4 mt-8 bg-gray-50 p-4 rounded-xl border border-gray-200">
+            <div className="flex-1 flex flex-col items-center justify-center border-r border-gray-300 pr-4">
+              <span className="text-2xl mb-1 drop-shadow-sm">🥗</span>
+              <p className="text-2xl font-black text-gray-900 leading-tight">
+                {dashboardData.totalVeg}
+              </p>
+              <p className="text-xs text-green-700 font-extrabold uppercase mt-1">
+                Veg
+              </p>
+            </div>
 
-                    <p className="text-xl font-bold text-green-600">
-                      {dashboardData.totalVeg}
-                    </p>
-
-                    <p className="text-xs text-green-700 font-medium mt-1">
-                      Vegetarian
-                    </p>
-                  </div>
-                </div>
-
-                {/* Non-Veg */}
-                <div className="bg-white/80 rounded-2xl p-4 shadow-lg border border-orange-200 transform hover:scale-105 transition-all duration-200">
-                  <div className="text-center">
-                    <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                      <span className="text-lg font-bold text-orange-600">
-                        🍗
-                      </span>
-                    </div>
-
-                    <p className="text-xl font-bold text-orange-600">
-                      {dashboardData.totalNonVeg}
-                    </p>
-
-                    <p className="text-xs text-orange-700 font-medium mt-1">
-                      Non-Veg
-                    </p>
-                  </div>
-                </div>
-              </div>
+            <div className="flex-1 flex flex-col items-center justify-center pl-2">
+              <span className="text-2xl mb-1 drop-shadow-sm">🍗</span>
+              <p className="text-2xl font-black text-gray-900 leading-tight">
+                {dashboardData.totalNonVeg}
+              </p>
+              <p className="text-xs text-red-700 font-extrabold uppercase mt-1">
+                Non-Veg
+              </p>
             </div>
           </div>
         </div>
 
-        {/* GIFTS */}
-        <div className="bg-gradient-to-br transform-gpu from-white to-purple-50 rounded-3xl p-6 shadow-2xl border border-purple-100 transform hover:scale-105 transition-all duration-300">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <div className="flex items-center space-x-4 mb-6">
-                <div className="p-4 bg-purple-500/20 rounded-2xl shadow-inner">
-                  <FaGift className="text-purple-600 text-xl" />
-                </div>
-
-                <div>
-                  <p className="text-purple-600 font-semibold text-base">
-                    Gifts Distributed
-                  </p>
-
-                  <h3 className="text-3xl font-bold text-gray-800 mt-1">
-                    {dashboardData.totalGifts}
-                  </h3>
-                </div>
+        {/* 5. GIFTS */}
+        <div className="bg-white cursor-pointer rounded-2xl p-6 shadow-md border border-gray-200 border-t-4 border-t-purple-500 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group">
+          <div>
+            <div className="flex items-start justify-between mb-4">
+              <div className="p-3 bg-purple-100 text-purple-700 rounded-lg group-hover:scale-110 transition-transform duration-300">
+                <FaGift className="text-2xl" />
               </div>
-
-              <div className="space-y-4">
-                {/* Delivered */}
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-green-600 font-medium flex items-center">
-                      <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
-                      Delivered
-                    </span>
-
-                    <span className="text-gray-800 font-bold">
-                      {dashboardData.totalGifts}
-                    </span>
-                  </div>
-
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-gradient-to-r from-green-500 to-green-600 h-2 rounded-full transition-all duration-1000"
-                      style={{
-                        width: `${
-                          dashboardData.totalAttendees === 0
-                            ? 0
-                            : (dashboardData.totalGifts /
-                                dashboardData.totalAttendees) *
-                              100
-                        }%`,
-                      }}
-                    ></div>
-                  </div>
-                </div>
-
-                {/* Pending */}
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-orange-500 flex items-center">
-                      <div className="w-2 h-2 bg-orange-500 rounded-full mr-2"></div>
-                      Pending
-                    </span>
-
-                    <span className="text-gray-800 font-bold">
-                      {dashboardData.totalAttendees - dashboardData.totalGifts}
-                    </span>
-                  </div>
-
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-gradient-to-r from-orange-400 to-orange-500 h-2 rounded-full transition-all duration-1000"
-                      style={{
-                        width: `${
-                          dashboardData.totalAttendees === 0
-                            ? 0
-                            : ((dashboardData.totalAttendees -
-                                dashboardData.totalGifts) /
-                                dashboardData.totalAttendees) *
-                              100
-                        }%`,
-                      }}
-                    ></div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4 text-center">
-                <p className="text-xs text-gray-500">
-                  Completion:{" "}
+              <div className="text-right">
+                <span className="text-sm font-black text-purple-800 bg-purple-100 px-3 py-1.5 rounded-lg border border-purple-200 shadow-sm">
                   {dashboardData.totalAttendees === 0
                     ? "0%"
                     : (
@@ -1544,14 +1592,81 @@ const Dashboard = () => {
                           dashboardData.totalAttendees) *
                         100
                       ).toFixed(1) + "%"}
+                </span>
+                <p className="text-[10px] text-gray-500 font-bold uppercase mt-2 tracking-wider">
+                  Completion
                 </p>
+              </div>
+            </div>
+            <div>
+              <h3 className="text-4xl font-extrabold text-gray-900 tracking-tight">
+                {dashboardData.totalGifts}
+              </h3>
+              <p className="text-gray-700 font-bold text-base mt-2">
+                Gifts Distributed
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-5 mt-6">
+            {/* Delivered */}
+            <div className="space-y-2">
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-gray-800 font-bold flex items-center">
+                  <span className="w-2.5 h-2.5 bg-green-500 rounded-full mr-2 shadow-sm"></span>
+                  Delivered
+                </span>
+                <span className="text-gray-900 font-black text-base">
+                  {dashboardData.totalGifts}
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2.5 shadow-inner">
+                <div
+                  className="bg-green-500 h-2.5 rounded-full transition-all duration-1000 shadow-sm"
+                  style={{
+                    width: `${
+                      dashboardData.totalAttendees === 0
+                        ? 0
+                        : (dashboardData.totalGifts /
+                            dashboardData.totalAttendees) *
+                          100
+                    }%`,
+                  }}
+                ></div>
+              </div>
+            </div>
+
+            {/* Pending */}
+            <div className="space-y-2">
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-gray-800 font-bold flex items-center">
+                  <span className="w-2.5 h-2.5 bg-orange-400 rounded-full mr-2 shadow-sm"></span>
+                  Pending
+                </span>
+                <span className="text-gray-900 font-black text-base">
+                  {dashboardData.totalAttendees - dashboardData.totalGifts}
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2.5 shadow-inner">
+                <div
+                  className="bg-orange-400 h-2.5 rounded-full transition-all duration-1000 shadow-sm"
+                  style={{
+                    width: `${
+                      dashboardData.totalAttendees === 0
+                        ? 0
+                        : ((dashboardData.totalAttendees -
+                            dashboardData.totalGifts) /
+                            dashboardData.totalAttendees) *
+                          100
+                    }%`,
+                  }}
+                ></div>
               </div>
             </div>
           </div>
         </div>
       </div>
-
-      {/* ---------------- USERS TABLE (UPDATED TABLE HEADERS) ---------------- */}
+      {/* ---------------- USERS TABLE ---------------- */}
       <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
         <div className="p-8">
           {/* Header Section */}
@@ -1616,18 +1731,7 @@ const Dashboard = () => {
                           Join
                         </span>
                         <button
-                          onClick={() => {
-                            const link = document.createElement("a");
-                            link.href =
-                              "https://api.regeve.in/api/event-forms/export-notjoining";
-                            link.setAttribute(
-                              "download",
-                              "notjoining-users.xlsx",
-                            );
-                            document.body.appendChild(link);
-                            link.click();
-                            link.remove();
-                          }}
+                          onClick={handleExportNotJoining}
                           className="px-3 py-1 bg-red-600 text-white rounded-lg shadow hover:bg-red-700 transition text-xs font-semibold cursor-pointer"
                         >
                           📄 Export
@@ -1782,7 +1886,7 @@ const Dashboard = () => {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="5" className="px-8 py-20 text-center">
+                      <td colSpan="6" className="px-8 py-20 text-center">
                         <div className="flex flex-col items-center justify-center max-w-md mx-auto">
                           <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-6">
                             <FaUserCircle className="text-gray-400 text-5xl" />

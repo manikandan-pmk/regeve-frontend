@@ -88,7 +88,7 @@ const EventManagementHomePage = () => {
      const payload = {
   data: {
     Name: formName,
-    admins: {
+    admin: {
       connect: [adminId]
     }
   },
@@ -175,7 +175,7 @@ const EventManagementHomePage = () => {
           </button>
         </div>
 
-        {/* Form Builder Canvas (Shows after creation) */}
+        {/* Form Builder Canvas (Shows after creation)
         {createdForm && !editingFormId && (
           <div className="mb-10 bg-white p-8 rounded-2xl shadow-sm border border-slate-200 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex items-center justify-between mb-6 pb-6 border-b border-slate-100">
@@ -210,7 +210,7 @@ const EventManagementHomePage = () => {
               </button>
             </div>
           </div>
-        )}
+        )} */}
 
         {/* Existing Forms Grid */}
         <div className="space-y-4">

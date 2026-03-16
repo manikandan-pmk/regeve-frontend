@@ -2,6 +2,7 @@ import axios from "axios";
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useParams } from "react-router-dom";
+import { useEffect } from "react";
 
 export default function EventForm() {
   const defaultForm = {
@@ -25,6 +26,7 @@ export default function EventForm() {
   const [form, setForm] = useState(defaultForm);
   const [photo, setPhoto] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [eventName, setEventName] = useState("");
 
   // Popup state
   const [showPopup, setShowPopup] = useState(false);
@@ -69,6 +71,24 @@ export default function EventForm() {
     const res = await axios.post("https://api.regeve.in/api/upload", fd);
     return res.data[0].id;
   };
+
+  useEffect(() => {
+    const fetchEvent = async () => {
+      try {
+        const res = await axios.get(
+          `https://api.regeve.in/api/event-management-name/public/${documentId}`,
+        );
+
+        if (res.data && res.data.length > 0) {
+          setEventName(res.data[0].Name); // change field if needed
+        }
+      } catch (error) {
+        console.error("Error fetching event:", error);
+      }
+    };
+
+    fetchEvent();
+  }, [documentId]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -149,32 +169,9 @@ export default function EventForm() {
         {/* Header */}
         <div className="text-center mb-6 sm:mb-8 relative">
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2 sm:mb-3">
-            Family Day Event - 2025
+            {eventName || "Event Registration"}
           </h1>
           <p className="text-gray-600 text-sm sm:text-lg">Registration Form</p>
-
-          {/* Go Home Button */}
-          <button
-            onClick={() => navigate("/")}
-            className="
-              hidden lg:inline-block
-              sm:fixed sm:top-6 sm:right-6
-              sm:bg-gradient-to-br sm:from-blue-600 sm:to-cyan-700
-              sm:hover:from-blue-700 sm:hover:to-cyan-800
-              sm:border sm:border-blue-500 sm:text-white
-              mx-auto sm:mx-0
-              w-full sm:w-auto text-center
-              mt-4 sm:mt-0
-              px-5 py-2.5
-              rounded-lg shadow-lg cursor-pointer
-              transition-all duration-200
-              text-sm font-medium
-              bg-blue-600 sm:bg-gradient-to-br
-              text-white
-            "
-          >
-            ← Go Home
-          </button>
         </div>
 
         {/* Form Container */}
@@ -243,7 +240,7 @@ export default function EventForm() {
                   {/* Coming for Family Day */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1 sm:mb-2">
-                      Please Confirm Your Participation for Family Day - 2025 *
+                      Please Confirm Your Participation
                     </label>
                     <select
                       name="coming_to_family_day"

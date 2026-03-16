@@ -316,25 +316,25 @@ export default function AdminDashboard() {
 
   // Services configuration
   const servicesConfig = {
-    "Digital Registration": {
-      id: "digitalRegistration",
-      icon: MdDescription,
-      title: "Digital Registration",
-      description:
-        "Manage event registrations, attendee forms, and digital sign-ups",
-      color: "bg-gradient-to-r from-indigo-500 to-purple-600",
-      route: "/event-form",
-      dataKey: "Digital Registration",
-    },
-    "Food Management": {
-      id: "foodManagement",
-      icon: RiRestaurantLine,
-      title: "Food Management",
-      description: "Catering orders, menu planning, and vendor coordination",
-      color: "bg-gradient-to-r from-emerald-500 to-teal-600",
-      route: "/dashboard",
-      dataKey: "Food Management",
-    },
+    // "Digital Registration": {
+    //   id: "digitalRegistration",
+    //   icon: MdDescription,
+    //   title: "Digital Registration",
+    //   description:
+    //     "Manage event registrations, attendee forms, and digital sign-ups",
+    //   color: "bg-gradient-to-r from-indigo-500 to-purple-600",
+    //   route: "/event-form",
+    //   dataKey: "Digital Registration",
+    // },
+    // "Food Management": {
+    //   id: "foodManagement",
+    //   icon: RiRestaurantLine,
+    //   title: "Food Management",
+    //   description: "Catering orders, menu planning, and vendor coordination",
+    //   color: "bg-gradient-to-r from-emerald-500 to-teal-600",
+    //   route: "/dashboard",
+    //   dataKey: "Food Management",
+    // },
     "Election System": {
       id: "electionSystem",
       icon: MdHowToVote,

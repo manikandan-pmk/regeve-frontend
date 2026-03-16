@@ -14,14 +14,14 @@ import LuckydrawServices from "./components/services/LuckydrawServices";
 import FoodManagement from "./components/services/FoodManagement";
 import DashboardSystemPage from "./components/services/DashboardSystemPage";
 import ScrollToTop from "./components/ScrollToTop";
-import UserDetail from "./components/UserDetail";
+import UserDetail from "./pages/Event/UserDetail";
 import BlogPage from "./components/BlogPage";
 import HelpCenter from "./components/HelpCenter";
 import PrivacyPolicy from "./components/PrivacyPolicy";
 import RegisterForm from "./pages/Auth/RegisterForm";
 import MemberDashBoard from "./pages/Scan/MemberDashBoard";
 import QRCodeForm from "./components/QRCodeFom/QRCodeForm";
-import GiftStatusPage from "./pages/GiftStatusPage";
+import GiftStatusPage from "./pages/Event/GiftStatusPage";
 import QRRedirect from "./pages/QRRedirect";
 
 // 🔐 ELECTION
@@ -51,6 +51,7 @@ import Participants from "./pages/Bidding/ParticipantsDashboard";
 import AdminBiddingDashboard from "./pages/Bidding/AdminBiddingDashboard";
 import ParticipantBiddingPage from "./pages/Bidding/ParticipantBiddingPage";
 import EventManagementHomePage from "./pages/Event/EventManagementHomePage";
+import EventLuckydraw from "./pages/Event/EventLuckydraw";
 
 export default function App() {
   const location = useLocation();
@@ -73,8 +74,6 @@ export default function App() {
     // election pages
     location.pathname.includes("/electionhome") ||
     location.pathname.startsWith("/electionForm") ||
-    // member details
-    location.pathname.startsWith("/member-details/") ||
     // admin dashboard
     location.pathname.endsWith("/admindashboard") ||
     location.pathname.includes("/votingpage/") ||
@@ -88,8 +87,11 @@ export default function App() {
     location.pathname.includes("/participant-bidding") ||
     //event-management
     location.pathname.includes("/event-home") ||
-    location.pathname.includes("/dashboard/")||
-    location.pathname.includes("/event-form/");
+    location.pathname.includes("/dashboard/") ||
+    location.pathname.includes("/event-form/") ||
+    location.pathname.includes("/event-luckydraw") ||
+    location.pathname.includes("/giftstatus")||
+    location.pathname.includes("/member-details/");
 
   return (
     <div className="max-w-full overflow-x-hidden">
@@ -126,10 +128,9 @@ export default function App() {
         {/* ================= AUTH ================= */}
         <Route path="/regeve-admin" element={<RegisterForm />} />
         {/* ================= MEMBER / QR ================= */}
-        <Route path="/member-details/:Member_ID" element={<UserDetail />} />
+
         <Route path="/scanDashboard" element={<MemberDashBoard />} />
         <Route path="/eventform-qr" element={<QRCodeForm />} />
-        <Route path="/giftstatus" element={<GiftStatusPage />} />
         <Route path="/qr/:memberId" element={<QRRedirect />} />
         {/* ================= ADMIN PROTECTED ================= */}
         <Route
@@ -224,6 +225,18 @@ export default function App() {
         <Route
           path="/:adminId/event-form/:documentId"
           element={<EventForm />}
+        />
+        <Route
+          path="/:adminId/event-luckydraw/:documentId"
+          element={<EventLuckydraw />}
+        />
+        <Route
+          path="/:adminId/giftstatus/:documentId"
+          element={<GiftStatusPage />}
+        />
+        <Route
+          path="/:adminId/member-details/:documentId/:member_id"
+          element={<UserDetail />}
         />
       </Routes>
 
