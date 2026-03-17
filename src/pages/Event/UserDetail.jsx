@@ -291,20 +291,7 @@ const UserDetail = () => {
     loadMember();
   }, [member_id]);
 
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      try {
-        const res = await axios.get(
-          `https://api.regeve.in/api/event/${adminId}/member-details/${documentId}/${member_id}/present`
-        );
-        setMember(res.data?.data);
-        setEditedMember(res.data?.data);
-      } catch (err) {
-        console.error("Auto-refresh error:", err);
-      }
-    }, 60000);
-    return () => clearInterval(interval);
-  }, [member_id]);
+
 
   // Helper Functions
   const getFieldValue = (fieldName) => {
@@ -500,7 +487,7 @@ const UserDetail = () => {
 
   const handleFieldChange = (fieldName, value) => {
     if (fieldName === "IsPresent") {
-      if (!editedMember?.IsVerified && value === true) {
+      if (!editedMember?.Is_Verified_Member && value === true) {
         alert("Only verified members can be marked as Present.");
         return;
       }

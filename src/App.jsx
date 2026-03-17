@@ -22,7 +22,7 @@ import RegisterForm from "./pages/Auth/RegisterForm";
 import MemberDashBoard from "./pages/Scan/MemberDashBoard";
 import QRCodeForm from "./components/QRCodeFom/QRCodeForm";
 import GiftStatusPage from "./pages/Event/GiftStatusPage";
-import QRRedirect from "./pages/QRRedirect";
+
 
 // 🔐 ELECTION
 import ElectionHome from "./pages/Election/ElectionHome";
@@ -91,7 +91,8 @@ export default function App() {
     location.pathname.includes("/event-form/") ||
     location.pathname.includes("/event-luckydraw") ||
     location.pathname.includes("/giftstatus")||
-    location.pathname.includes("/member-details/");
+    location.pathname.includes("/member-details/")||
+    location.pathname.includes("/scanDashboard/");
 
   return (
     <div className="max-w-full overflow-x-hidden">
@@ -131,7 +132,7 @@ export default function App() {
 
         <Route path="/scanDashboard" element={<MemberDashBoard />} />
         <Route path="/eventform-qr" element={<QRCodeForm />} />
-        <Route path="/qr/:memberId" element={<QRRedirect />} />
+       
         {/* ================= ADMIN PROTECTED ================= */}
         <Route
           path="/:adminId/electionhome"
@@ -238,6 +239,7 @@ export default function App() {
           path="/:adminId/member-details/:documentId/:member_id"
           element={<UserDetail />}
         />
+        <Route path="/scanDashboard/:documentId" element={<MemberDashBoard />} />
       </Routes>
 
       {!hideLayout && <Footer />}
