@@ -15,6 +15,7 @@
     "bootstrap": "^5.3.8",
     "file-saver": "^2.0.5",
     "framer-motion": "^12.23.25",
+    "html5-qrcode": "^2.3.8",
     "lucide-react": "^0.554.0",
     "qrcode.react": "^4.2.0",
     "react": "^19.2.0",

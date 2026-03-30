@@ -19,6 +19,7 @@ import {
   FiUsers,
   FiCalendar,
   FiTrendingUp,
+  
 } from "react-icons/fi";
 import {
   RiDashboardLine,
@@ -30,6 +31,7 @@ import {
   MdCardGiftcard,
   MdDescription,
   MdEventAvailable,
+  
 } from "react-icons/md";
 
 // Service Card Component
@@ -362,6 +364,17 @@ export default function AdminDashboard() {
       route: "/event-home",
       isNew: true,
     },
+     "Event Booking": {
+    id: "eventBooking",
+    icon: MdEventAvailable, // import from react-icons/md
+    title: "Event Booking",
+    description:
+      "Seamless event scheduling, ticket booking, and attendee management",
+    color: "bg-gradient-to-r from-indigo-500 to-violet-600",
+    route: "/event-booking",
+    dataKey: "Event Booking",
+    isNew: true,
+  },
   };
 
   // Fetch admin data from API

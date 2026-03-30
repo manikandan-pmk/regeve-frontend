@@ -23,6 +23,7 @@ export default function RegisterForm() {
     luckydraw: false,
     dashboard: false,
     digitalRegistration: false,
+    eventbooking:false
   });
 
   const navigate = useNavigate();
@@ -299,6 +300,7 @@ export default function RegisterForm() {
         "Election System": selectedServices.electionSystem,
         "Lucky Draw": selectedServices.luckydraw,
         Dashboard: selectedServices.dashboard,
+        "Event Booking": selectedServices.eventbooking,
       },
     };
 
@@ -1706,6 +1708,16 @@ export default function RegisterForm() {
                         bgColor: "bg-orange-50",
                         hoverBorder: "hover:border-orange-300",
                       },
+                      {
+  id: "eventbooking",
+  name: "Event Booking",
+  description: "Manage event scheduling, ticket booking, and attendee registrations",
+  icon: "🎟️",
+  borderColor: "border-indigo-500",
+  checkColor: "text-indigo-500",
+  bgColor: "bg-indigo-50",
+  hoverBorder: "hover:border-indigo-300",
+}
                     ].map((service) => (
                       <div
                         key={service.id}

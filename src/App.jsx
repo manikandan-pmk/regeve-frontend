@@ -52,7 +52,13 @@ import AdminBiddingDashboard from "./pages/Bidding/AdminBiddingDashboard";
 import ParticipantBiddingPage from "./pages/Bidding/ParticipantBiddingPage";
 import EventManagementHomePage from "./pages/Event/EventManagementHomePage";
 import EventLuckydraw from "./pages/Event/EventLuckydraw";
-
+//event booking
+import EventBookingHome from "./pages/EventBooking/EventBookingHome";
+import EventBookingDashboard from "./pages/EventBooking/EventBookingDashboard";
+import EventBookingTicketPage from "./pages/EventBooking/EventBookingTicketPage";
+import EventTicketBookingForm from "./pages/EventBooking/EventTicketBookingForm";
+import ParticipantTicketPage from "./pages/EventBooking/ParticipantTicketPage";
+import EventQrCodeScanner from "./pages/EventBooking/EventQrCodeScanner";
 export default function App() {
   const location = useLocation();
 
@@ -92,7 +98,15 @@ export default function App() {
     location.pathname.includes("/event-luckydraw") ||
     location.pathname.includes("/giftstatus")||
     location.pathname.includes("/member-details/")||
-    location.pathname.includes("/scanDashboard/");
+    location.pathname.includes("/scanDashboard/")||
+    
+     //event booking 
+    location.pathname.includes("/event-booking") ||
+    location.pathname.includes("/eventbooking-dashboard") ||
+    location.pathname.includes("/events") ||
+    location.pathname.includes("/checkout") ||
+    location.pathname.includes("/participant-ticketpage")||
+    location.pathname.includes("/event-qrscanner");
 
   return (
     <div className="max-w-full overflow-x-hidden">
@@ -240,6 +254,16 @@ export default function App() {
           element={<UserDetail />}
         />
         <Route path="/scanDashboard/:documentId" element={<MemberDashBoard />} />
+
+
+          {/* ================= EVENT BOOKING ================= */}
+          
+        <Route path="/:adminId/event-booking" element={<EventBookingHome />} />
+        <Route path="/:adminId/eventbooking-dashboard/:documentId" element={<EventBookingDashboard />} />
+        <Route path="/:adminId/events/:documentId" element={<EventBookingTicketPage />} />
+        <Route path="/:adminId/checkout/:documentId" element={<EventTicketBookingForm />} />
+        <Route path="/:adminId/participant-ticketpage/:participationId" element={<ParticipantTicketPage />} />
+        <Route path="/event-qrscanner" element={<EventQrCodeScanner />} />
       </Routes>
 
       {!hideLayout && <Footer />}
