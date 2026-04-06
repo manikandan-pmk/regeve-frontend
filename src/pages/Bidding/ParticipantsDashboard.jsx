@@ -101,7 +101,7 @@ export default function Participants() {
 
   // 🔹 COPY REGISTRATION LINK
   const copyLink = () => {
-    const publicLink = `${window.location.origin}/#/${adminId}/bid-partcipant-form/${documentId}`;
+    const publicLink = `${window.location.origin}/${adminId}/bid-partcipant-form/${documentId}`;
     navigator.clipboard.writeText(publicLink);
     showToast("Registration Link Copied to Clipboard!", "success");
   };

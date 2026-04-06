@@ -651,8 +651,8 @@ export default function EventForm() {
                         {/* WhatsApp Share */}
                         <button
                           onClick={() => {
-                            const detailsLink = `${window.location.origin}/#/member-details/${memberData.Member_ID}`;
-                            const qrCleanLink = `${window.location.origin}/#/qr/${memberData.Member_ID}`;
+                            const detailsLink = `${window.location.origin}/member-details/${memberData.Member_ID}`;
+                            const qrCleanLink = `${window.location.origin}/qr/${memberData.Member_ID}`;
                             const message = `
 🎉 *Registration Confirmed!*
 
@@ -682,7 +682,7 @@ Please present your QR Code at the venue for entry.
                         {/* Copy Link */}
                         <button
                           onClick={async () => {
-                            const shareableLink = `${window.location.origin}/#/member-details/${memberData.Member_ID}`;
+                            const shareableLink = `${window.location.origin}/member-details/${memberData.Member_ID}`;
                             try {
                               await navigator.clipboard.writeText(
                                 shareableLink,

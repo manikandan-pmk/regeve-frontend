@@ -164,7 +164,7 @@ const EventBookingDashboard = () => {
   };
 
   const handleCopyUrl = () => {
-    const url = `${window.location.origin}/#/${adminId}/events/${documentId}`;
+    const url = `${window.location.origin}/${adminId}/events/${documentId}`;
 
     navigator.clipboard
       .writeText(url)

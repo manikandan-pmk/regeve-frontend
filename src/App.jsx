@@ -23,7 +23,6 @@ import MemberDashBoard from "./pages/Scan/MemberDashBoard";
 import QRCodeForm from "./components/QRCodeFom/QRCodeForm";
 import GiftStatusPage from "./pages/Event/GiftStatusPage";
 
-
 // 🔐 ELECTION
 import ElectionHome from "./pages/Election/ElectionHome";
 import CandidateDashboard from "./pages/Election/CandidateDashboard";
@@ -96,16 +95,15 @@ export default function App() {
     location.pathname.includes("/dashboard/") ||
     location.pathname.includes("/event-form/") ||
     location.pathname.includes("/event-luckydraw") ||
-    location.pathname.includes("/giftstatus")||
-    location.pathname.includes("/member-details/")||
-    location.pathname.includes("/scanDashboard/")||
-    
-     //event booking 
+    location.pathname.includes("/giftstatus") ||
+    location.pathname.includes("/member-details/") ||
+    location.pathname.includes("/scanDashboard/") ||
+    //event booking
     location.pathname.includes("/event-booking") ||
     location.pathname.includes("/eventbooking-dashboard") ||
     location.pathname.includes("/events") ||
     location.pathname.includes("/checkout") ||
-    location.pathname.includes("/participant-ticketpage")||
+    location.pathname.includes("/participant-ticketpage") ||
     location.pathname.includes("/event-qrscanner");
 
   return (
@@ -146,7 +144,7 @@ export default function App() {
 
         <Route path="/scanDashboard" element={<MemberDashBoard />} />
         <Route path="/eventform-qr" element={<QRCodeForm />} />
-       
+
         {/* ================= ADMIN PROTECTED ================= */}
         <Route
           path="/:adminId/electionhome"
@@ -253,16 +251,30 @@ export default function App() {
           path="/:adminId/member-details/:documentId/:member_id"
           element={<UserDetail />}
         />
-        <Route path="/scanDashboard/:documentId" element={<MemberDashBoard />} />
+        <Route
+          path="/scanDashboard/:documentId"
+          element={<MemberDashBoard />}
+        />
 
+        {/* ================= EVENT BOOKING ================= */}
 
-          {/* ================= EVENT BOOKING ================= */}
-          
         <Route path="/:adminId/event-booking" element={<EventBookingHome />} />
-        <Route path="/:adminId/eventbooking-dashboard/:documentId" element={<EventBookingDashboard />} />
-        <Route path="/:adminId/events/:documentId" element={<EventBookingTicketPage />} />
-        <Route path="/:adminId/checkout/:documentId" element={<EventTicketBookingForm />} />
-        <Route path="/:adminId/participant-ticketpage/:participationId" element={<ParticipantTicketPage />} />
+        <Route
+          path="/:adminId/eventbooking-dashboard/:documentId"
+          element={<EventBookingDashboard />}
+        />
+        <Route
+          path="/:adminId/events/:documentId"
+          element={<EventBookingTicketPage />}
+        />
+        <Route
+          path="/:adminId/checkout/:documentId"
+          element={<EventTicketBookingForm />}
+        />
+        <Route
+          path="/:adminId/participant-ticketpage/:participationId"
+          element={<ParticipantTicketPage />}
+        />
         <Route path="/event-qrscanner" element={<EventQrCodeScanner />} />
       </Routes>
 

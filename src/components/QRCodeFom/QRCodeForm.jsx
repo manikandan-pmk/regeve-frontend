@@ -2,7 +2,7 @@ import React, { useRef } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 
 const QRCodeForm = () => {
-  const url = "https://regeve.in/#/event-form";
+  const url = "https://regeve.in/event-form";
   const qrRef = useRef(null);
 
   const downloadQR = () => {

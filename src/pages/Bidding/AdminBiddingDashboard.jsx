@@ -230,7 +230,7 @@ const AdminBiddingDashboard = () => {
   const [paymentErrorMessage, setPaymentErrorMessage] = useState("");
 
   const handleCopyLink = () => {
-    const participantUrl = `${window.location.origin}/#/${adminId || "admin"}/participant-bidding/${documentId}`;
+    const participantUrl = `${window.location.origin}/${adminId || "admin"}/participant-bidding/${documentId}`;
     navigator.clipboard.writeText(participantUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);

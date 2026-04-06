@@ -825,7 +825,7 @@ const Dashboard = () => {
   }, [navigate]);
 
   const copyParticipantLink = () => {
-    const url = `${window.location.origin}/#/${adminId}/event-form/${documentId}`;
+    const url = `${window.location.origin}/${adminId}/event-form/${documentId}`;
     navigator.clipboard.writeText(url);
 
     // Trigger animation
@@ -836,7 +836,7 @@ const Dashboard = () => {
   };
 
   const copyLuckyDrawLink = () => {
-    const url = `${window.location.origin}/#/${adminId}/event-luckydraw/${documentId}`;
+    const url = `${window.location.origin}/${adminId}/event-luckydraw/${documentId}`;
     navigator.clipboard.writeText(url);
 
     setShowCopyToast(true);

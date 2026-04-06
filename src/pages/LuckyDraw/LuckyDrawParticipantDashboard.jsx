@@ -713,7 +713,7 @@ const LuckyDrawParticipantDashboard = () => {
             <button
               onClick={async () => {
                 const baseUrl = window.location.origin;
-                const participantFormLink = `${baseUrl}/#/${adminId}/luckydraw-form/${luckydrawDocumentId}`;
+                const participantFormLink = `${baseUrl}/${adminId}/luckydraw-form/${luckydrawDocumentId}`;
 
                 try {
                   await navigator.clipboard.writeText(participantFormLink);

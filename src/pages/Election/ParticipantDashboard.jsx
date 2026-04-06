@@ -115,12 +115,12 @@ const ParticipantDashboard = () => {
       ? encodeURIComponent(electionName.replace(/\s+/g, "-").toLowerCase())
       : "election-form";
 
-    return `${baseUrl}/#/electionForm/${adminId}/${electionDocumentId}/${urlFriendlyElectionName}`;
+    return `${baseUrl}/electionForm/${adminId}/${electionDocumentId}/${urlFriendlyElectionName}`;
   };
 
   const handleVotingPageClick = () => {
     const baseUrl = window.location.origin;
-    const votingLink = `${baseUrl}/#/${adminId}/votingpage/${electionDocumentId}`;
+    const votingLink = `${baseUrl}/${adminId}/votingpage/${electionDocumentId}`;
 
     navigator.clipboard
       .writeText(votingLink)
@@ -567,7 +567,7 @@ const ParticipantDashboard = () => {
                       )
                     : "election-form";
 
-                  const electionFormLink = `${baseUrl}/#/electionForm/${adminId}/${electionDocumentId}/${urlFriendlyElectionName}`;
+                  const electionFormLink = `${baseUrl}/electionForm/${adminId}/${electionDocumentId}/${urlFriendlyElectionName}`;
 
                   navigator.clipboard
                     .writeText(electionFormLink)
